@@ -28,25 +28,29 @@
 #include <inttypes.h>
 #include <string.h>
 #include <assert.h>
-#include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/time.h>
 #include <time.h>
 #include <signal.h>
 #include <limits.h>
 #include <sys/stat.h>
-#include <dirent.h>
 #if defined(_WIN32)
 #include <windows.h>
 #include <conio.h>
-#include <utime.h>
+#include <io.h>
+#include <sys/utime.h>
+
+#define S_ISDIR(m) (m & _S_IFDIR)
+#define PATH_MAX _MAX_PATH
 #else
+#include <dirent.h>
 #include <dlfcn.h>
 #include <termios.h>
+#include <unistd.h>
+#include <utime.h>
+#include <sys/time.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>
-
 #if defined(__APPLE__)
 typedef sig_t sighandler_t;
 #if !defined(environ)
@@ -2428,7 +2432,13 @@ static JSValue js_os_readdir(JSContext *ctx, JSValueConst this_val,
                              int argc, JSValueConst *argv)
 {
     const char *path;
+#if defined(_WIN32)
+    HANDLE hFind;
+    WIN32_FIND_DATA hData;
+    int f = 0;
+#else
     DIR *f;
+#endif
     struct dirent *d;
     JSValue obj;
     int err;
@@ -2442,7 +2452,12 @@ static JSValue js_os_readdir(JSContext *ctx, JSValueConst this_val,
         JS_FreeCString(ctx, path);
         return JS_EXCEPTION;
     }
+#if defined(_WIN32)
+    hFind = FindFirstFileA(path, &hData);
+    f = hFind != INVALID_HANDLE_VALUE;
+#else
     f = opendir(path);
+#endif
     if (!f)
         err = errno;
     else
@@ -2451,6 +2466,16 @@ static JSValue js_os_readdir(JSContext *ctx, JSValueConst this_val,
     if (!f)
         goto done;
     len = 0;
+#if defined(_WIN32)
+    do
+    {
+        JS_DefinePropertyValueUint32(ctx, obj, len++,
+                                     JS_NewString(ctx, hData.cFileName),
+                                     JS_PROP_C_W_E);
+
+    } while (FindNextFileA(hFind, &hData));
+    FindClose(hFind);
+#else
     for(;;) {
         errno = 0;
         d = readdir(f);
@@ -2463,6 +2488,7 @@ static JSValue js_os_readdir(JSContext *ctx, JSValueConst this_val,
                                      JS_PROP_C_W_E);
     }
     closedir(f);
+#endif
  done:
     return make_obj_error(ctx, obj, err);
 }
@@ -3630,12 +3656,12 @@ static const JSCFunctionListEntry js_os_funcs[] = {
     JS_CFUNC_DEF("readdir", 1, js_os_readdir ),
     /* st_mode constants */
     OS_FLAG(S_IFMT),
-    OS_FLAG(S_IFIFO),
     OS_FLAG(S_IFCHR),
     OS_FLAG(S_IFDIR),
-    OS_FLAG(S_IFBLK),
     OS_FLAG(S_IFREG),
 #if !defined(_WIN32)
+    OS_FLAG(S_IFIFO),
+    OS_FLAG(S_IFBLK),
     OS_FLAG(S_IFSOCK),
     OS_FLAG(S_IFLNK),
     OS_FLAG(S_ISGID),

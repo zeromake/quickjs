@@ -36,16 +36,27 @@
 #define LIMB_BITS (1 << LIMB_LOG2_BITS)
 
 #if LIMB_BITS == 64
-typedef __int128 int128_t;
-typedef unsigned __int128 uint128_t;
-typedef int64_t slimb_t;
-typedef uint64_t limb_t;
-typedef uint128_t dlimb_t;
-#define BF_RAW_EXP_MIN INT64_MIN
-#define BF_RAW_EXP_MAX INT64_MAX
+#ifdef _MSC_VER
 
-#define LIMB_DIGITS 19
-#define BF_DEC_BASE UINT64_C(10000000000000000000)
+/* NOTE: 128-bit integer types are not available on MSVC! */
+typedef int64_t             int128_t;
+typedef uint64_t            uint128_t;
+#elif defined(__MINGW32__)
+typedef __int128            int128_t;
+typedef __uint128_t         uint128_t;
+#else
+typedef __int128            int128_t;
+typedef dlimb_t             uint128_t;
+#endif
+typedef int64_t             slimb_t;
+typedef uint64_t            limb_t;
+typedef uint128_t           dlimb_t;
+
+#define BF_RAW_EXP_MIN      INT64_MIN
+#define BF_RAW_EXP_MAX      INT64_MAX
+
+#define LIMB_DIGITS         19
+#define BF_DEC_BASE         UINT64_C(10000000000000000000)
 
 #else
 

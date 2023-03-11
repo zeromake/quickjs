@@ -28,11 +28,15 @@
 #include <inttypes.h>
 #include <string.h>
 #include <assert.h>
+#if !defined(_MSC_VER)
 #include <unistd.h>
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <time.h>
-#if defined(__APPLE__)
+#if defined(_MSC_VER)
+#include <io.h>
+#elif defined(__APPLE__)
 #include <malloc/malloc.h>
 #elif defined(__linux__)
 #include <malloc.h>
@@ -159,9 +163,9 @@ static inline size_t js_trace_malloc_usable_size(void *ptr)
 static void
 #ifdef _WIN32
 /* mingw printf is used */
-__attribute__((format(gnu_printf, 2, 3)))
+util_format(gnu_printf, 2, 3)
 #else
-__attribute__((format(printf, 2, 3)))
+util_format(printf, 2, 3)
 #endif
     js_trace_malloc_printf(JSMallocState *s, const char *fmt, ...)
 {
