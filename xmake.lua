@@ -106,3 +106,10 @@ target("qjs")
         })
         os.cd("-")
     end)
+
+target("unicode_gen")
+    use_packages()
+    add_files(
+        "unicode_gen.c",
+        "cutils.c"
+    )
