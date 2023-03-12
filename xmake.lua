@@ -14,6 +14,7 @@ add_defines(
     "_GNU_SOURCE=1",
     "CONFIG_BIGNUM=1",
     "CONFIG_DIRECT_DISPATCH=0"
+    -- "CONFIG_DEBUGGER"
 )
 
 package("skeeto-getopt")
@@ -84,6 +85,9 @@ local function use_packages()
     elseif is_plat("mingw") then
         add_packages("dlfcn-win32")
     end
+    if is_plat("windows", "mingw") then
+        add_syslinks("ws2_32")
+    end
 end
 
 target("quickjs")
@@ -96,6 +100,8 @@ target("quickjs")
         "cutils.c",
         "quickjs-libc.c",
         "libbf.c"
+        -- "quickjs-debugger.c",
+        -- "quickjs-debugger-transport-win.c"
     )
 
 
