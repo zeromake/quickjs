@@ -5,6 +5,8 @@ if is_plat("windows") then
 elseif is_plat("mingw") then
     add_ldflags("-pthread")
     add_ldflags("-static")
+    add_shflags("-pthread")
+    add_cxflags("-fPIC")
 end
 
 add_defines(
@@ -52,17 +54,35 @@ package("pthread-win32")
     end)
 package_end()
 
+package("dlfcn-win32")
+    set_urls("https://github.com/dlfcn-win32/dlfcn-win32/archive/refs/tags/v$(version).tar.gz")
+    add_versions("1.3.1", "f7248a8baeb79d9bcd5f702cc08a777431708758e70d1730b59674c5e795e88a")
+    on_install(function (package)
+        io.writefile("xmake.lua", [[
+add_rules("mode.debug", "mode.release")
 if is_plat("windows") then
-    add_requires("skeeto-getopt", "simple-stdatomic", "pthread-win32")
+    add_cxflags("/utf-8")
+end
+target("dlfcn-win32")
+    set_kind("$(kind)")
+    add_files("src/dlfcn.c")
+    add_headerfiles("src/dlfcn.h")
+]])
+    import("package.tools.xmake").install(package, {})
+    end)
+package_end()
+
+if is_plat("windows") then
+    add_requires("skeeto-getopt", "simple-stdatomic", "pthread-win32", "dlfcn-win32")
 elseif is_plat("mingw") then
-    -- add_requires("simple-stdatomic")
+    add_requires("dlfcn-win32")
 end
 
 local function use_packages()
     if is_plat("windows") then
-        add_packages("skeeto-getopt", "simple-stdatomic", "pthread-win32")
+        add_packages("skeeto-getopt", "simple-stdatomic", "pthread-win32", "dlfcn-win32")
     elseif is_plat("mingw") then
-        -- add_packages("simple-stdatomic")
+        add_packages("dlfcn-win32")
     end
 end
 
@@ -112,4 +132,16 @@ target("unicode_gen")
     add_files(
         "unicode_gen.c",
         "cutils.c"
+    )
+
+target("tests/bjson")
+    set_kind("shared")
+    use_packages()
+    add_deps("quickjs")
+    add_files(
+        "tests/bjson.c"
+    )
+    add_defines(
+        "JS_SHARED_LIBRARY=1",
+        "JS_EXPORT=__declspec(dllexport)"
     )
