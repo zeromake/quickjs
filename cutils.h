@@ -57,7 +57,7 @@
 #define no_inline                      __attribute__((noinline))
 #define __maybe_unused                 __attribute__((unused))
 #define util_packed(_declaration)      _declaration __attribute__((packed))
-#define util_format(...)
+#define util_format(...)               __attribute__((format(__VA_ARGS__)))
 #else
 #define _Atomic(x) x
 #define likely(x)                      (x)
@@ -78,7 +78,7 @@
 #define no_inline                      __attribute__((noinline))
 #define __maybe_unused                 __attribute__((unused))
 #define util_packed(_declaration)      _declaration __attribute__((packed))
-#define util_format(...)               util_format(__VA_ARGS__)
+#define util_format(...)               __attribute__((format(__VA_ARGS__)))
 #endif
 
 #if !defined(_SSIZE_T_DEFINED)

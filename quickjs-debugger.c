@@ -539,6 +539,8 @@ void js_debugger_free_context(JSContext *ctx) {
 // in thread check request/response of pending commands.
 // todo: background thread that reads the socket.
 void js_debugger_check(JSContext* ctx, const uint8_t *cur_pc) {
+    // printf("js_debugger_check\n");
+    // fflush(stdout);
     JSDebuggerInfo *info = js_debugger_info(JS_GetRuntime(ctx));
     if (info->is_debugging)
         return;

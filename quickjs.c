@@ -16260,7 +16260,7 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
 #define CASE(op)        case op
 #endif
 #define DEFAULT         default
-#define BREAK           break
+#define BREAK           goto switch_restart
 #else
     static const void * const dispatch_table[256] = {
 #define DEF(id, size, n_pop, n_push, f) && case_OP_ ## id,
@@ -16292,7 +16292,7 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
 #define CASE(op)        case_ ## op
 #endif
 #define DEFAULT         case_default
-#define BREAK           SWITCH(pc)
+#define BREAK           goto switch_restart
 #ifdef CONFIG_DEBUGGER
 const void * const * active_dispatch_table = caller_ctx->rt->debugger_info.transport_close ? debugger_dispatch_table : dispatch_table;
 #else
@@ -16383,14 +16383,14 @@ const void * const * active_dispatch_table = dispatch_table;
     rt->current_stack_frame = sf;
     ctx = b->realm; /* set the current realm */
     
- restart:
+restart:
     for(;;) {
         int call_argc;
         JSValue *call_argv;
 #ifdef CONFIG_DEBUGGER
         js_debugger_check(ctx, NULL);
 #endif
-
+switch_restart:
         SWITCH(pc) {
         CASE(OP_push_i32):
             *sp++ = JS_NewInt32(ctx, get_u32(pc));
@@ -30918,7 +30918,8 @@ static __exception int resolve_variables(JSContext *ctx, JSFunctionDef *s)
 
     /* init with function start line to ensure generate a valid last line for one-line function */
 #ifdef CONFIG_DEBUGGER
-    line_num = s->line_num;
+    line_num = 0;
+    // line_num = s->line_num;
 #else
     line_num = 0;
 #endif
@@ -31072,7 +31073,8 @@ static __exception int resolve_variables(JSContext *ctx, JSFunctionDef *s)
                 pos_next = pos;
                 //NOTE: use <= instead of < to allow we save the last line num
 #ifdef CONFIG_DEBUGGER
-                if (pos <= bc_len && line >= 0 && line_num != line) {
+                if (pos < bc_len && line >= 0 && line_num != line) {
+                // if (pos <= bc_len && line >= 0 && line_num != line) {
 #else
                 if (pos < bc_len && line >= 0 && line_num != line) {
 #endif

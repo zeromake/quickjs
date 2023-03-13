@@ -13,8 +13,8 @@ add_defines(
     "CONFIG_VERSION=\"2021-03-27\"",
     "_GNU_SOURCE=1",
     "CONFIG_BIGNUM=1",
-    "CONFIG_DIRECT_DISPATCH=0"
-    -- "CONFIG_DEBUGGER"
+    "CONFIG_DIRECT_DISPATCH=0",
+    "CONFIG_DEBUGGER"
 )
 
 package("skeeto-getopt")
@@ -84,6 +84,8 @@ local function use_packages()
         add_packages("skeeto-getopt", "simple-stdatomic", "pthread-win32", "dlfcn-win32")
     elseif is_plat("mingw") then
         add_packages("dlfcn-win32")
+    else
+        add_syslinks("m", "dl", "pthread")
     end
     if is_plat("windows", "mingw") then
         add_syslinks("ws2_32")
@@ -99,8 +101,10 @@ target("quickjs")
         "libunicode.c",
         "cutils.c",
         "quickjs-libc.c",
-        "libbf.c"
-        -- "quickjs-debugger.c",
+        "libbf.c",
+        "quickjs-debugger.c",
+        "quickjs-debugger-transport.c"
+        -- "quickjs-debugger-transport-unix.c"
         -- "quickjs-debugger-transport-win.c"
     )
 

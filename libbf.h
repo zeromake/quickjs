@@ -46,7 +46,7 @@ typedef __int128            int128_t;
 typedef __uint128_t         uint128_t;
 #else
 typedef __int128            int128_t;
-typedef dlimb_t             uint128_t;
+typedef __uint128_t         uint128_t;
 #endif
 typedef int64_t             slimb_t;
 typedef uint64_t            limb_t;
