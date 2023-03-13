@@ -69,7 +69,7 @@ static size_t js_transport_peek(void *udata) {
     int poll_rc;
 
     struct js_transport_data* data = (struct js_transport_data *)udata;
-    if (!data->handle)
+    if (data->handle == socket_invalid)
         return -1;
 
     fds[0].fd = data->handle;
@@ -115,10 +115,10 @@ static size_t js_transport_peek(void *udata) {
 static void js_transport_close(JSRuntime* rt, void *udata) {
     // debugf("js_transport_close\n");
     struct js_transport_data* data = (struct js_transport_data *)udata;
-    if (!data->handle)
+    if (data->handle == socket_invalid)
         return;
-    socket_cleanup();
     socket_close(data->handle);
+    socket_cleanup();
     free(udata);
 }
 
@@ -144,7 +144,7 @@ void js_debugger_connect(JSContext *ctx, const char *address) {
     int ret = js_debugger_parse_sockaddr(address, &addr);
     assert(!ret);
     socket_t client = socket_tcp();
-    assert(client);
+    assert(client != socket_invalid);
     ret = socket_connect(client, (const struct sockaddr*)&addr, sizeof(addr));
     assert(!ret);
 
@@ -161,7 +161,7 @@ void js_debugger_wait_connection(JSContext *ctx, const char* address) {
     memset(&addr, 0, sizeof(struct sockaddr_in));
     int ret = js_debugger_parse_sockaddr(address, &addr);
     socket_t server = socket_tcp();
-    assert(server);
+    assert(server != socket_invalid);
     assert(!socket_setreuseaddr(server, 1));
     assert(!socket_bind(server, (const struct sockaddr*)&addr, sizeof(addr)));
     assert(!socket_listen(server, 1));

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdbool.h>
 
 typedef struct DebuggerSuspendedState {
     uint32_t variable_reference_count;
@@ -391,6 +392,36 @@ static void js_process_request(JSDebuggerInfo *info, struct DebuggerSuspendedSta
     JS_FreeValue(ctx, request);
 }
 
+static char* js_debugger_breakpoint_normal_path(const char* path) {
+    size_t size = strlen(path);
+    bool prev_backslash = false;
+    size_t offset = 0;
+    char* out = (char*)malloc(size + 1);
+    memset(out, 0, size+1);
+    for (size_t i = 0; i < size; i++) {
+        char c = path[i];
+        if ((c >= 'A') && (c <= 'Z'))
+            c += ('a' - 'A');
+
+        bool backslash = c == '\\' || c == '/';
+        if (backslash && prev_backslash) {
+            continue;
+        }
+        if (backslash) {
+            prev_backslash = true;
+#ifdef _WIN32
+            out[offset++] = '\\';
+#else
+            out[offset++] = '/';
+#endif
+        } else {
+            out[offset++] = c;
+            prev_backslash = false;
+        }
+    }
+    return out;
+}
+
 static void js_process_breakpoints(JSDebuggerInfo *info, JSValue message) {
     JSContext *ctx = info->ctx;
 
@@ -419,8 +450,14 @@ static void js_process_breakpoints(JSDebuggerInfo *info, JSValue message) {
 
 JSValue js_debugger_file_breakpoints(JSContext *ctx, const char* path) {
     JSDebuggerInfo *info = js_debugger_info(JS_GetRuntime(ctx));
+#ifdef _WIN32
+    char* normal_path = js_debugger_breakpoint_normal_path(path);
+    JSValue path_data = JS_GetPropertyStr(ctx, info->breakpoints, normal_path);
+    free(normal_path);
+#else
     JSValue path_data = JS_GetPropertyStr(ctx, info->breakpoints, path);
-    return path_data;    
+#endif
+    return path_data;
 }
 
 static int js_process_debugger_messages(JSDebuggerInfo *info, const uint8_t *cur_pc) {
