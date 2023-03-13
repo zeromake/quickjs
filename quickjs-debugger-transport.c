@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define debugf(msg, ...) printf(msg, __VA_ARGS__);fflush(stdout);
+#define debugf(...) printf(__VA_ARGS__);fflush(stdout);
 
 struct js_transport_data {
     socket_t handle;
@@ -37,6 +37,8 @@ static size_t js_transport_read(void *udata, char *buffer, size_t length) {
     if (ret > length)
         return -6;
 
+    // buffer[length] = 0;
+    // debugf("js_transport_read: %s\n", buffer);
     return ret;
 }
 
@@ -111,7 +113,7 @@ static size_t js_transport_peek(void *udata) {
 
 
 static void js_transport_close(JSRuntime* rt, void *udata) {
-    // printf("js_transport_close\n");
+    // debugf("js_transport_close\n");
     struct js_transport_data* data = (struct js_transport_data *)udata;
     if (!data->handle)
         return;
