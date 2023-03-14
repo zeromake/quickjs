@@ -2538,6 +2538,16 @@ static JSValue js_os_issymlink(JSContext *ctx, JSValueConst this_val, int argc, 
     return JS_NewBool(ctx, is_symlink);
 }
 
+
+#if defined(_WIN32)
+void filetimeToTimeT(FILETIME t, time_t *tt) {
+    ULARGE_INTEGER ui;
+    ui.HighPart = t.dwHighDateTime;
+    ui.LowPart = t.dwLowDateTime;
+    *tt = ((LONGLONG)(ui.QuadPart - 116444736000000000) / 10000000);
+}
+#endif
+
 /* return [obj, errcode] */
 static JSValue js_os_stat(JSContext *ctx, JSValueConst this_val,
                           int argc, JSValueConst *argv, int is_lstat)
@@ -2550,12 +2560,52 @@ static JSValue js_os_stat(JSContext *ctx, JSValueConst this_val,
     path = JS_ToCString(ctx, argv[0]);
     if (!path)
         return JS_EXCEPTION;
+    memset(&st, 0, sizeof(struct stat));
 #if defined(_WIN32)
-    res = stat(path, &st);
-    DWORD dwAttrib = GetFileAttributesA(path);
-    if (dwAttrib != INVALID_FILE_ATTRIBUTES && dwAttrib & FILE_ATTRIBUTE_REPARSE_POINT) {
-        st.st_mode |= S_IFLNK;
+    HANDLE handle;
+    DWORD flags;
+    DWORD ret;
+    flags = FILE_FLAG_BACKUP_SEMANTICS;
+    if (is_lstat)
+        flags |= FILE_FLAG_OPEN_REPARSE_POINT;
+    handle = CreateFileA(
+        path,
+        FILE_READ_ATTRIBUTES,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        NULL,
+        OPEN_EXISTING,
+        flags,
+        NULL
+    );
+    BY_HANDLE_FILE_INFORMATION info;
+    if (GetFileInformationByHandle(handle, &info)) {
+        if (info.dwFileAttributes != INVALID_FILE_ATTRIBUTES) {
+            if (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+                st.st_mode |= S_IFLNK;
+            }
+            if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                st.st_mode |= S_IFDIR;
+            } else {
+                st.st_mode |= S_IFREG;
+            }
+        }
+
+        filetimeToTimeT(info.ftLastAccessTime, &st.st_atime);
+        filetimeToTimeT(info.ftLastWriteTime, &st.st_mtime);
+        filetimeToTimeT(info.ftCreationTime, &st.st_ctime);
+        st.st_dev = info.dwVolumeSerialNumber;
+        st.st_size = (info.nFileSizeHigh * (MAXDWORD + 1)) + info.nFileSizeLow;
+        st.st_ino = (info.nFileIndexHigh * (MAXDWORD + 1)) + info.nFileIndexLow;
+        st.st_nlink = info.nNumberOfLinks;
+    } else {
+        res = -1;
     }
+    CloseHandle(handle);
+    // res = stat(path, &st);
+    // DWORD dwAttrib = GetFileAttributesA(path);
+    // if (dwAttrib != INVALID_FILE_ATTRIBUTES && dwAttrib & FILE_ATTRIBUTE_REPARSE_POINT) {
+    //     st.st_mode |= S_IFLNK;
+    // }
 #else
     if (is_lstat)
         res = lstat(path, &st);
@@ -2773,7 +2823,6 @@ static JSValue js_os_symlink(JSContext *ctx, JSValueConst this_val,
     return JS_NewInt32(ctx, err);
 }
 
-#if !defined(_WIN32)
 /* return [path, errorcode] */
 static JSValue js_os_readlink(JSContext *ctx, JSValueConst this_val,
                               int argc, JSValueConst *argv)
@@ -2786,7 +2835,25 @@ static JSValue js_os_readlink(JSContext *ctx, JSValueConst this_val,
     path = JS_ToCString(ctx, argv[0]);
     if (!path)
         return JS_EXCEPTION;
+#ifdef _WIN32
+    HANDLE handle;
+    DWORD flags;
+    DWORD ret;
+    flags = FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT;
+    handle = CreateFileA(
+        path,
+        FILE_READ_ATTRIBUTES,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        NULL,
+        OPEN_EXISTING,
+        flags,
+        NULL
+    );
+    res = GetFinalPathNameByHandleA(handle, buf, MAX_PATH, 0);
+    CloseHandle(handle);
+#else
     res = readlink(path, buf, sizeof(buf) - 1);
+#endif
     if (res < 0) {
         buf[0] = '\0';
         err = errno;
@@ -2798,6 +2865,7 @@ static JSValue js_os_readlink(JSContext *ctx, JSValueConst this_val,
     return make_string_error(ctx, buf, err);
 }
 
+#if !defined(_WIN32)
 static char **build_envp(JSContext *ctx, JSValueConst obj)
 {
     uint32_t len, i;
@@ -3723,14 +3791,14 @@ static const JSCFunctionListEntry js_os_funcs[] = {
     OS_FLAG(S_ISUID),
 #endif
     JS_CFUNC_MAGIC_DEF("stat", 1, js_os_stat, 0 ),
+    JS_CFUNC_MAGIC_DEF("lstat", 1, js_os_stat, 1 ),
     JS_CFUNC_DEF("utimes", 3, js_os_utimes ),
     JS_CFUNC_DEF("sleep", 1, js_os_sleep ),
     JS_CFUNC_DEF("realpath", 1, js_os_realpath ),
     JS_CFUNC_DEF("symlink", 2, js_os_symlink ),
     JS_CFUNC_DEF("issymlink", 1, js_os_issymlink ),
-#if !defined(_WIN32)
-    JS_CFUNC_MAGIC_DEF("lstat", 1, js_os_stat, 1 ),
     JS_CFUNC_DEF("readlink", 1, js_os_readlink ),
+#if !defined(_WIN32)
     JS_CFUNC_DEF("exec", 1, js_os_exec ),
     JS_CFUNC_DEF("waitpid", 2, js_os_waitpid ),
     OS_FLAG(WNOHANG),

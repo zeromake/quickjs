@@ -200,8 +200,10 @@ function test_os()
     assert(os.issymlink(link_path));
     assert(!os.issymlink(fpath));
 
-    
     [st, err] = os.stat(fpath);
+    assert((st.mode & os.S_IFLNK) != os.S_IFLNK);
+    [st, err] = os.stat(link_path);
+    assert((st.mode & os.S_IFLNK) != os.S_IFLNK);
 
     [st, err] = os.lstat(link_path);
     assert(err, 0);

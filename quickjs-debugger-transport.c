@@ -14,7 +14,7 @@
     return JS_ASSERT_RET;\
 }
 #else
-#define js_assert(expression) assert(expression) 
+#define js_assert(expression) assert(expression)
 #endif
 
 struct js_transport_data {

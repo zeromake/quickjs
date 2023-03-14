@@ -1,6 +1,6 @@
 add_rules("mode.debug", "mode.release")
 
-option("debugger")
+option("js-debugger")
     set_default(false)
     set_showmenu(true)
 option_end()
@@ -105,7 +105,7 @@ local function use_packages()
     if get_config("bignum") then
         add_defines("CONFIG_BIGNUM=1")
     end
-    if get_config("debugger") then
+    if get_config("js-debugger") then
         add_defines("CONFIG_DEBUGGER=1")
     end
 end
@@ -123,7 +123,7 @@ target("quickjs")
     if get_config("bignum") then
         add_files("libbf.c")
     end
-    if get_config("debugger") then
+    if get_config("js-debugger") then
         add_files(
             "quickjs-debugger.c",
             "quickjs-debugger-transport.c"
