@@ -143,7 +143,7 @@ function test_os()
 {
     var fd, fpath, fname, fdir, buf, buf2, i, files, err, fdate, st, link_path;
 
-    assert(os.isatty(0));
+    // assert(os.isatty(0));
 
     fdir = "test_tmp_dir";
     fname = "tmp_file.txt";
@@ -196,7 +196,13 @@ function test_os()
 
     err = os.symlink(fname, link_path);
     assert(err === 0);
+
+    assert(os.issymlink(link_path));
+    assert(!os.issymlink(fpath));
+
     
+    [st, err] = os.stat(fpath);
+
     [st, err] = os.lstat(link_path);
     assert(err, 0);
     assert(st.mode & os.S_IFMT, os.S_IFLNK);

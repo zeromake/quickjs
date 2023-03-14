@@ -43,6 +43,10 @@
 
 #define S_ISDIR(m) (m & _S_IFDIR)
 #define PATH_MAX _MAX_PATH
+#ifndef S_IFLNK
+# define S_IFLNK 0xA000
+#endif
+
 #else
 #include <dirent.h>
 #include <termios.h>
@@ -2511,6 +2515,29 @@ static int64_t timespec_to_ms(const struct timespec *tv)
 }
 #endif
 
+static JSValue js_os_issymlink(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    const char *path;
+    int err, res;
+    boolean is_symlink = false;
+    path = JS_ToCString(ctx, argv[0]);
+    if (!path)
+        return JS_EXCEPTION;
+#if defined(_WIN32)
+    DWORD dwAttrib = GetFileAttributesA(path);
+    if (dwAttrib != INVALID_FILE_ATTRIBUTES && dwAttrib & FILE_ATTRIBUTE_REPARSE_POINT) {
+        is_symlink = true;
+    }
+#else
+    struct stat st;
+    res = lstat(path, &st);
+    if (!res) {
+        is_symlink = S_ISLNK(st.st_mode);
+    }
+#endif
+    JS_FreeCString(ctx, path);
+    return JS_NewBool(ctx, is_symlink);
+}
+
 /* return [obj, errcode] */
 static JSValue js_os_stat(JSContext *ctx, JSValueConst this_val,
                           int argc, JSValueConst *argv, int is_lstat)
@@ -2525,6 +2552,10 @@ static JSValue js_os_stat(JSContext *ctx, JSValueConst this_val,
         return JS_EXCEPTION;
 #if defined(_WIN32)
     res = stat(path, &st);
+    DWORD dwAttrib = GetFileAttributesA(path);
+    if (dwAttrib != INVALID_FILE_ATTRIBUTES && dwAttrib & FILE_ATTRIBUTE_REPARSE_POINT) {
+        st.st_mode |= S_IFLNK;
+    }
 #else
     if (is_lstat)
         res = lstat(path, &st);
@@ -2709,7 +2740,6 @@ static JSValue js_os_realpath(JSContext *ctx, JSValueConst this_val,
     return make_string_error(ctx, buf, err);
 }
 
-#if !defined(_WIN32)
 static JSValue js_os_symlink(JSContext *ctx, JSValueConst this_val,
                               int argc, JSValueConst *argv)
 {
@@ -2724,12 +2754,26 @@ static JSValue js_os_symlink(JSContext *ctx, JSValueConst this_val,
         JS_FreeCString(ctx, target);
         return JS_EXCEPTION;
     }
+#if defined(_WIN32)
+    DWORD dwAttrib = GetFileAttributesA(target);
+    DWORD dwFlags = 0;
+    if (dwAttrib != INVALID_FILE_ATTRIBUTES && dwAttrib & FILE_ATTRIBUTE_DIRECTORY) {
+        dwFlags = 1;
+    }
+    if (CreateSymbolicLinkA(linkpath, target, dwFlags)) {
+        err = 0;
+    } else {
+        err = GetLastError();
+    }
+#else
     err = js_get_errno(symlink(target, linkpath));
+#endif
     JS_FreeCString(ctx, target);
     JS_FreeCString(ctx, linkpath);
     return JS_NewInt32(ctx, err);
 }
 
+#if !defined(_WIN32)
 /* return [path, errorcode] */
 static JSValue js_os_readlink(JSContext *ctx, JSValueConst this_val,
                               int argc, JSValueConst *argv)
@@ -3670,11 +3714,11 @@ static const JSCFunctionListEntry js_os_funcs[] = {
     OS_FLAG(S_IFCHR),
     OS_FLAG(S_IFDIR),
     OS_FLAG(S_IFREG),
+    OS_FLAG(S_IFLNK),
 #if !defined(_WIN32)
     OS_FLAG(S_IFIFO),
     OS_FLAG(S_IFBLK),
     OS_FLAG(S_IFSOCK),
-    OS_FLAG(S_IFLNK),
     OS_FLAG(S_ISGID),
     OS_FLAG(S_ISUID),
 #endif
@@ -3682,9 +3726,10 @@ static const JSCFunctionListEntry js_os_funcs[] = {
     JS_CFUNC_DEF("utimes", 3, js_os_utimes ),
     JS_CFUNC_DEF("sleep", 1, js_os_sleep ),
     JS_CFUNC_DEF("realpath", 1, js_os_realpath ),
+    JS_CFUNC_DEF("symlink", 2, js_os_symlink ),
+    JS_CFUNC_DEF("issymlink", 1, js_os_issymlink ),
 #if !defined(_WIN32)
     JS_CFUNC_MAGIC_DEF("lstat", 1, js_os_stat, 1 ),
-    JS_CFUNC_DEF("symlink", 2, js_os_symlink ),
     JS_CFUNC_DEF("readlink", 1, js_os_readlink ),
     JS_CFUNC_DEF("exec", 1, js_os_exec ),
     JS_CFUNC_DEF("waitpid", 2, js_os_waitpid ),
