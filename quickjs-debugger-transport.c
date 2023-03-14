@@ -8,6 +8,14 @@
 #include <stdio.h>
 
 #define debugf(...) printf(__VA_ARGS__);fflush(stdout);
+#ifdef NDEBUG
+#define js_assert(expression) if (!expression) {\
+    JS_ASSERT_PRINT;\
+    return JS_ASSERT_RET;\
+}
+#else
+#define js_assert(expression) assert(expression) 
+#endif
 
 struct js_transport_data {
     socket_t handle;
@@ -122,12 +130,15 @@ static void js_transport_close(JSRuntime* rt, void *udata) {
     free(udata);
 }
 
+#define JS_ASSERT_PRINT fprintf(stderr, "parse addr assert -> %s:%d\n", __FILE__, __LINE__)
+#define JS_ASSERT_RET -1
+
 static int js_debugger_parse_sockaddr(const char* address, struct sockaddr_in *addr) {
     char* port_string = strstr(address, ":");
-    assert(port_string);
+    js_assert(port_string);
 
     int port = atoi(port_string + 1);
-    assert(port);
+    js_assert(port);
 
     char host_string[256];// = "127.0.0.1";
     strcpy(host_string, address);
@@ -136,17 +147,19 @@ static int js_debugger_parse_sockaddr(const char* address, struct sockaddr_in *a
 }
 
 
+#define JS_ASSERT_PRINT fprintf(stdout, "client connect assert -> %s:%d\n", __FILE__, __LINE__);fflush(stdout)
+#define JS_ASSERT_RET
 void js_debugger_connect(JSContext *ctx, const char *address) {
-    assert(!socket_init());
+    js_assert(!socket_init());
 
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(struct sockaddr_in));
     int ret = js_debugger_parse_sockaddr(address, &addr);
-    assert(!ret);
+    js_assert(!ret);
     socket_t client = socket_tcp();
-    assert(client != socket_invalid);
+    js_assert(client);
     ret = socket_connect(client, (const struct sockaddr*)&addr, sizeof(addr));
-    assert(!ret);
+    js_assert(!ret);
 
     struct js_transport_data *data = (struct js_transport_data *)malloc(sizeof(struct js_transport_data));
     memset(data, 0, sizeof(js_transport_data));
@@ -154,23 +167,24 @@ void js_debugger_connect(JSContext *ctx, const char *address) {
     js_debugger_attach(ctx, js_transport_read, js_transport_write, js_transport_peek, js_transport_close, data);
 }
 
+#define JS_ASSERT_PRINT fprintf(stdout, "server connect assert -> %s:%d\n", __FILE__, __LINE__);fflush(stdout)
 
 void js_debugger_wait_connection(JSContext *ctx, const char* address) {
-    assert(!socket_init());
+    js_assert(!socket_init());
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(struct sockaddr_in));
     int ret = js_debugger_parse_sockaddr(address, &addr);
     socket_t server = socket_tcp();
-    assert(server != socket_invalid);
-    assert(!socket_setreuseaddr(server, 1));
-    assert(!socket_bind(server, (const struct sockaddr*)&addr, sizeof(addr)));
-    assert(!socket_listen(server, 1));
+    js_assert(server);
+    js_assert(!socket_setreuseaddr(server, 1));
+    js_assert(!socket_bind(server, (const struct sockaddr*)&addr, sizeof(addr)));
+    js_assert(!socket_listen(server, 1));
 
     struct sockaddr_storage client_addr;
     socklen_t client_addr_size;
     socket_t client = socket_accept(server, &client_addr, &client_addr_size);
     socket_close(server);
-    assert(client);
+    js_assert(client);
 
     struct js_transport_data *data = (struct js_transport_data *)malloc(sizeof(struct js_transport_data));
     memset(data, 0, sizeof(js_transport_data));

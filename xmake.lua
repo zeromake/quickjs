@@ -1,5 +1,15 @@
 add_rules("mode.debug", "mode.release")
 
+option("debugger")
+    set_default(false)
+    set_showmenu(true)
+option_end()
+
+option("bignum")
+    set_default(true)
+    set_showmenu(true)
+option_end()
+
 if is_plat("windows") then
     add_cxflags("/utf-8")
 elseif is_plat("mingw") then
@@ -7,15 +17,17 @@ elseif is_plat("mingw") then
     add_ldflags("-static")
     add_shflags("-pthread")
     add_cxflags("-fPIC")
+else
+    add_ldflags("-fPIC")
 end
 
+local version = "2021-03-27"
 add_defines(
-    "CONFIG_VERSION=\"2021-03-27\"",
-    "_GNU_SOURCE=1",
-    "CONFIG_BIGNUM=1",
-    "CONFIG_DIRECT_DISPATCH=0",
-    "CONFIG_DEBUGGER"
+    format("CONFIG_VERSION=\"%s\"", version),
+    "_GNU_SOURCE=1"
 )
+
+add_defines("CONFIG_DIRECT_DISPATCH="..(is_plat("windows") and "0" or "1"))
 
 package("skeeto-getopt")
     set_urls("https://github.com/skeeto/getopt/archive/4e618ef782dc80b2cf0307ea74b68e6a62b025de.zip")
@@ -90,6 +102,12 @@ local function use_packages()
     if is_plat("windows", "mingw") then
         add_syslinks("ws2_32")
     end
+    if get_config("bignum") then
+        add_defines("CONFIG_BIGNUM=1")
+    end
+    if get_config("debugger") then
+        add_defines("CONFIG_DEBUGGER=1")
+    end
 end
 
 target("quickjs")
@@ -100,14 +118,17 @@ target("quickjs")
         "libregexp.c",
         "libunicode.c",
         "cutils.c",
-        "quickjs-libc.c",
-        "libbf.c",
-        "quickjs-debugger.c",
-        "quickjs-debugger-transport.c"
-        -- "quickjs-debugger-transport-unix.c"
-        -- "quickjs-debugger-transport-win.c"
+        "quickjs-libc.c"
     )
-
+    if get_config("bignum") then
+        add_files("libbf.c")
+    end
+    if get_config("debugger") then
+        add_files(
+            "quickjs-debugger.c",
+            "quickjs-debugger-transport.c"
+        )
+    end
 
 target("qjsc")
     use_packages()
@@ -120,13 +141,17 @@ target("qjs")
     add_deps("qjsc")
     before_build(function (target)
         os.cd(path.join(os.scriptdir()))
-        os.execv(path.join(target:targetdir(), "qjsc"), {
-            "-fbignum",
+        local argv = {}
+        if get_config("bignum") then
+            table.insert(argv, "-fbignum")
+        end
+        table.join2(argv, {
             "-c",
             "-o",
             "build/qjscalc.c",
             "qjscalc.js"
         })
+        os.execv(path.join(target:targetdir(), "qjsc"), argv)
         os.execv(path.join(target:targetdir(), "qjsc"), {
             "-c",
             "-o",

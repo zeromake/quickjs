@@ -2434,15 +2434,15 @@ static JSValue js_os_readdir(JSContext *ctx, JSValueConst this_val,
     const char *path;
 #if defined(_WIN32)
     HANDLE hFind;
-    WIN32_FIND_DATA hData;
+    WIN32_FIND_DATAA hData;
     int f = 0;
 #else
     DIR *f;
 #endif
     struct dirent *d;
     JSValue obj;
-    int err;
-    uint32_t len;
+    int err = 0;
+    uint32_t len = 0;
     
     path = JS_ToCString(ctx, argv[0]);
     if (!path)
@@ -2453,7 +2453,12 @@ static JSValue js_os_readdir(JSContext *ctx, JSValueConst this_val,
         return JS_EXCEPTION;
     }
 #if defined(_WIN32)
-    hFind = FindFirstFileA(path, &hData);
+    char* _path = (char*)malloc(strlen(path) + 3);
+    memset(_path, 0, strlen(path) + 3);
+    strcpy(_path, path);
+    strcpy(_path + strlen(path), "\\*");
+    hFind = FindFirstFileA(_path, &hData);
+    free(_path);
     f = hFind != INVALID_HANDLE_VALUE;
 #else
     f = opendir(path);
@@ -2469,6 +2474,9 @@ static JSValue js_os_readdir(JSContext *ctx, JSValueConst this_val,
 #if defined(_WIN32)
     do
     {
+        if (strcmp(hData.cFileName, ".") == 0 || strcmp(hData.cFileName, "..") == 0) {
+            continue;
+        }
         JS_DefinePropertyValueUint32(ctx, obj, len++,
                                      JS_NewString(ctx, hData.cFileName),
                                      JS_PROP_C_W_E);
@@ -2482,6 +2490,9 @@ static JSValue js_os_readdir(JSContext *ctx, JSValueConst this_val,
         if (!d) {
             err = errno;
             break;
+        }
+        if (strcmp(d->d_name, ".") == 0 || strcmp(d->d_name, "..") == 0) {
+            continue;
         }
         JS_DefinePropertyValueUint32(ctx, obj, len++,
                                      JS_NewString(ctx, d->d_name),
