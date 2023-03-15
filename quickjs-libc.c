@@ -2513,6 +2513,222 @@ static int64_t timespec_to_ms(const struct timespec *tv)
 {
     return (int64_t)tv->tv_sec * 1000 + (tv->tv_nsec / 1000000);
 }
+#else
+inline void filetime_to_ms(FILETIME t, time_t *tt) {
+    ULARGE_INTEGER ui;
+    ui.HighPart = t.dwHighDateTime;
+    ui.LowPart = t.dwLowDateTime;
+    *tt = ((LONGLONG)(ui.QuadPart - 116444736000000000) / 10000);
+}
+
+static int fs__wide_to_utf8(WCHAR* w_source_ptr,
+                               DWORD w_source_len,
+                               char** target_ptr,
+                               uint64_t* target_len_ptr) {
+    int r;
+    int target_len;
+    char* target;
+    target_len = WideCharToMultiByte(CP_UTF8,
+                                    0,
+                                    w_source_ptr,
+                                    w_source_len,
+                                    NULL,
+                                    0,
+                                    NULL,
+                                    NULL);
+
+    if (target_len == 0) {
+        return -1;
+    }
+    if (target_len_ptr != NULL) {
+        *target_len_ptr = target_len;
+    }
+
+    if (target_ptr == NULL) {
+        return 0;
+    }
+
+    target = malloc(target_len + 1);
+    if (target == NULL) {
+        SetLastError(ERROR_OUTOFMEMORY);
+        return -1;
+    }
+    r = WideCharToMultiByte(CP_UTF8,
+                            0,
+                            w_source_ptr,
+                            w_source_len,
+                            target,
+                            target_len,
+                            NULL,
+                            NULL);
+    assert(r == target_len);
+    target[target_len] = '\0';
+    *target_ptr = target;
+    return 0;
+}
+
+typedef struct _REPARSE_DATA_BUFFER {
+    ULONG  ReparseTag;
+    USHORT ReparseDataLength;
+    USHORT Reserved;
+    union {
+        struct {
+            USHORT SubstituteNameOffset;
+            USHORT SubstituteNameLength;
+            USHORT PrintNameOffset;
+            USHORT PrintNameLength;
+            ULONG Flags;
+            WCHAR PathBuffer[1];
+        } SymbolicLinkReparseBuffer;
+        struct {
+            USHORT SubstituteNameOffset;
+            USHORT SubstituteNameLength;
+            USHORT PrintNameOffset;
+            USHORT PrintNameLength;
+            WCHAR PathBuffer[1];
+        } MountPointReparseBuffer;
+        struct {
+            UCHAR  DataBuffer[1];
+        } GenericReparseBuffer;
+        struct {
+            ULONG StringCount;
+            WCHAR StringList[1];
+        } AppExecLinkReparseBuffer;
+    };
+} REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
+
+inline static int fs__readlink_handle(HANDLE handle, char** target_ptr,
+    uint64_t* target_len_ptr) {
+  char buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+  REPARSE_DATA_BUFFER* reparse_data = (REPARSE_DATA_BUFFER*) buffer;
+  WCHAR* w_target;
+  DWORD w_target_len;
+  DWORD bytes;
+  size_t i;
+  size_t len;
+
+  if (!DeviceIoControl(handle,
+                       FSCTL_GET_REPARSE_POINT,
+                       NULL,
+                       0,
+                       buffer,
+                       sizeof buffer,
+                       &bytes,
+                       NULL)) {
+    return -1;
+  }
+
+  if (reparse_data->ReparseTag == IO_REPARSE_TAG_SYMLINK) {
+    /* Real symlink */
+    w_target = reparse_data->SymbolicLinkReparseBuffer.PathBuffer +
+        (reparse_data->SymbolicLinkReparseBuffer.SubstituteNameOffset /
+        sizeof(WCHAR));
+    w_target_len =
+        reparse_data->SymbolicLinkReparseBuffer.SubstituteNameLength /
+        sizeof(WCHAR);
+    /* Real symlinks can contain pretty much everything, but the only thing we
+     * really care about is undoing the implicit conversion to an NT namespaced
+     * path that CreateSymbolicLink will perform on absolute paths. If the path
+     * is win32-namespaced then the user must have explicitly made it so, and
+     * we better just return the unmodified reparse data. */
+    if (w_target_len >= 4 &&
+        w_target[0] == L'\\' &&
+        w_target[1] == L'?' &&
+        w_target[2] == L'?' &&
+        w_target[3] == L'\\') {
+      /* Starts with \??\ */
+      if (w_target_len >= 6 &&
+          ((w_target[4] >= L'A' && w_target[4] <= L'Z') ||
+           (w_target[4] >= L'a' && w_target[4] <= L'z')) &&
+          w_target[5] == L':' &&
+          (w_target_len == 6 || w_target[6] == L'\\')) {
+        /* \??\<drive>:\ */
+        w_target += 4;
+        w_target_len -= 4;
+
+      } else if (w_target_len >= 8 &&
+                 (w_target[4] == L'U' || w_target[4] == L'u') &&
+                 (w_target[5] == L'N' || w_target[5] == L'n') &&
+                 (w_target[6] == L'C' || w_target[6] == L'c') &&
+                 w_target[7] == L'\\') {
+        /* \??\UNC\<server>\<share>\ - make sure the final path looks like
+         * \\<server>\<share>\ */
+        w_target += 6;
+        w_target[0] = L'\\';
+        w_target_len -= 6;
+      }
+    }
+
+  } else if (reparse_data->ReparseTag == IO_REPARSE_TAG_MOUNT_POINT) {
+    /* Junction. */
+    w_target = reparse_data->MountPointReparseBuffer.PathBuffer +
+        (reparse_data->MountPointReparseBuffer.SubstituteNameOffset /
+        sizeof(WCHAR));
+    w_target_len = reparse_data->MountPointReparseBuffer.SubstituteNameLength /
+        sizeof(WCHAR);
+
+    /* Only treat junctions that look like \??\<drive>:\ as symlink. Junctions
+     * can also be used as mount points, like \??\Volume{<guid>}, but that's
+     * confusing for programs since they wouldn't be able to actually
+     * understand such a path when returned by uv_readlink(). UNC paths are
+     * never valid for junctions so we don't care about them. */
+    if (!(w_target_len >= 6 &&
+          w_target[0] == L'\\' &&
+          w_target[1] == L'?' &&
+          w_target[2] == L'?' &&
+          w_target[3] == L'\\' &&
+          ((w_target[4] >= L'A' && w_target[4] <= L'Z') ||
+           (w_target[4] >= L'a' && w_target[4] <= L'z')) &&
+          w_target[5] == L':' &&
+          (w_target_len == 6 || w_target[6] == L'\\'))) {
+        SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
+        return -1;
+    }
+
+    /* Remove leading \??\ */
+    w_target += 4;
+    w_target_len -= 4;
+
+  } else if (reparse_data->ReparseTag == IO_REPARSE_TAG_APPEXECLINK) {
+    /* String #3 in the list has the target filename. */
+    if (reparse_data->AppExecLinkReparseBuffer.StringCount < 3) {
+      SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
+      return -1;
+    }
+    w_target = reparse_data->AppExecLinkReparseBuffer.StringList;
+    /* The StringList buffer contains a list of strings separated by "\0",   */
+    /* with "\0\0" terminating the list. Move to the 3rd string in the list: */
+    for (i = 0; i < 2; ++i) {
+      len = wcslen(w_target);
+      if (len == 0) {
+        SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
+        return -1;
+      }
+      w_target += len + 1;
+    }
+    w_target_len = wcslen(w_target);
+    if (w_target_len == 0) {
+      SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
+      return -1;
+    }
+    /* Make sure it is an absolute path. */
+    if (!(w_target_len >= 3 &&
+         ((w_target[0] >= L'a' && w_target[0] <= L'z') ||
+          (w_target[0] >= L'A' && w_target[0] <= L'Z')) &&
+         w_target[1] == L':' &&
+         w_target[2] == L'\\')) {
+      SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
+      return -1;
+    }
+
+  } else {
+    /* Reparse tag does not indicate a symlink. */
+    SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
+    return -1;
+  }
+
+  return fs__wide_to_utf8(w_target, w_target_len, target_ptr, target_len_ptr);
+}
 #endif
 
 static JSValue js_os_issymlink(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
@@ -2537,16 +2753,6 @@ static JSValue js_os_issymlink(JSContext *ctx, JSValueConst this_val, int argc, 
     JS_FreeCString(ctx, path);
     return JS_NewBool(ctx, is_symlink);
 }
-
-
-#if defined(_WIN32)
-void filetimeToTimeT(FILETIME t, time_t *tt) {
-    ULARGE_INTEGER ui;
-    ui.HighPart = t.dwHighDateTime;
-    ui.LowPart = t.dwLowDateTime;
-    *tt = ((LONGLONG)(ui.QuadPart - 116444736000000000) / 10000000);
-}
-#endif
 
 /* return [obj, errcode] */
 static JSValue js_os_stat(JSContext *ctx, JSValueConst this_val,
@@ -2590,9 +2796,9 @@ static JSValue js_os_stat(JSContext *ctx, JSValueConst this_val,
             }
         }
 
-        filetimeToTimeT(info.ftLastAccessTime, &st.st_atime);
-        filetimeToTimeT(info.ftLastWriteTime, &st.st_mtime);
-        filetimeToTimeT(info.ftCreationTime, &st.st_ctime);
+        filetime_to_ms(info.ftLastAccessTime, &st.st_atime);
+        filetime_to_ms(info.ftLastWriteTime, &st.st_mtime);
+        filetime_to_ms(info.ftCreationTime, &st.st_ctime);
         st.st_dev = info.dwVolumeSerialNumber;
         st.st_size = (info.nFileSizeHigh * (MAXDWORD + 1)) + info.nFileSizeLow;
         st.st_ino = (info.nFileIndexHigh * (MAXDWORD + 1)) + info.nFileIndexLow;
@@ -2652,13 +2858,13 @@ static JSValue js_os_stat(JSContext *ctx, JSValueConst this_val,
 #endif
 #if defined(_WIN32)
         JS_DefinePropertyValueStr(ctx, obj, "atime",
-                                  JS_NewInt64(ctx, (int64_t)st.st_atime * 1000),
+                                  JS_NewInt64(ctx, (int64_t)st.st_atime),
                                   JS_PROP_C_W_E);
         JS_DefinePropertyValueStr(ctx, obj, "mtime",
-                                  JS_NewInt64(ctx, (int64_t)st.st_mtime * 1000),
+                                  JS_NewInt64(ctx, (int64_t)st.st_mtime),
                                   JS_PROP_C_W_E);
         JS_DefinePropertyValueStr(ctx, obj, "ctime",
-                                  JS_NewInt64(ctx, (int64_t)st.st_ctime * 1000),
+                                  JS_NewInt64(ctx, (int64_t)st.st_ctime),
                                   JS_PROP_C_W_E);
 #elif defined(__APPLE__)
         JS_DefinePropertyValueStr(ctx, obj, "atime",
@@ -2849,8 +3055,11 @@ static JSValue js_os_readlink(JSContext *ctx, JSValueConst this_val,
         flags,
         NULL
     );
-    res = GetFinalPathNameByHandleA(handle, buf, MAX_PATH, 0);
+    char *buf2;
+    err = fs__readlink_handle(handle, &buf2, &res);
     CloseHandle(handle);
+    strcpy(buf, buf2);
+    free(buf2);
 #else
     res = readlink(path, buf, sizeof(buf) - 1);
 #endif
