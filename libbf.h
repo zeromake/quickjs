@@ -35,13 +35,14 @@
 
 #define LIMB_BITS (1 << LIMB_LOG2_BITS)
 
-#if LIMB_BITS == 64
-#ifdef _MSC_VER
+// msvc not has int128
+#if LIMB_BITS == 64 && defined(_MSC_VER)
+#define LIMB_BITS 32
+#define LIMB_LOG2_BITS 5
+#endif
 
-/* NOTE: 128-bit integer types are not available on MSVC! */
-typedef int64_t             int128_t;
-typedef uint64_t            uint128_t;
-#elif defined(__MINGW32__)
+#if LIMB_BITS == 64
+#if defined(__MINGW32__)
 typedef __int128            int128_t;
 typedef __uint128_t         uint128_t;
 #else
