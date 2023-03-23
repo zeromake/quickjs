@@ -180,3 +180,8 @@ target("tests/bjson")
         "JS_SHARED_LIBRARY=1",
         "JS_EXPORT=__declspec(dllexport)"
     )
+
+target("run-test262")
+    use_packages()
+    add_deps("quickjs")
+    add_files("run-test262.c")

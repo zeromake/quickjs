@@ -182,7 +182,7 @@ static int clock_getrealtime(struct timespec* ts)
 
 static int clock_getmonotonic(struct timespec* ts)
 {
-    return js_clock_getrealtime(ts);
+    return clock_getrealtime(ts);
 }
 #else
 #include <sys/time.h>

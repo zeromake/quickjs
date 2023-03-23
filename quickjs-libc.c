@@ -41,7 +41,7 @@
 #include <io.h>
 #include <sys/utime.h>
 
-#define S_ISDIR(m) (m & _S_IFDIR)
+#define S_ISDIR(m) ((m & _S_IFDIR) == _S_IFDIR)
 #define PATH_MAX _MAX_PATH
 #ifndef S_IFLNK
 # define S_IFLNK 0xA000
@@ -2740,7 +2740,7 @@ static JSValue js_os_issymlink(JSContext *ctx, JSValueConst this_val, int argc, 
         return JS_EXCEPTION;
 #if defined(_WIN32)
     DWORD dwAttrib = GetFileAttributesA(path);
-    if (dwAttrib != INVALID_FILE_ATTRIBUTES && dwAttrib & FILE_ATTRIBUTE_REPARSE_POINT) {
+    if (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_REPARSE_POINT) == FILE_ATTRIBUTE_REPARSE_POINT) {
         is_symlink = true;
     }
 #else
@@ -2786,10 +2786,10 @@ static JSValue js_os_stat(JSContext *ctx, JSValueConst this_val,
     BY_HANDLE_FILE_INFORMATION info;
     if (GetFileInformationByHandle(handle, &info)) {
         if (info.dwFileAttributes != INVALID_FILE_ATTRIBUTES) {
-            if (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+            if ((info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) == FILE_ATTRIBUTE_REPARSE_POINT) {
                 st.st_mode |= S_IFLNK;
             }
-            if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            if ((info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY) {
                 st.st_mode |= S_IFDIR;
             } else {
                 st.st_mode |= S_IFREG;
@@ -2807,11 +2807,6 @@ static JSValue js_os_stat(JSContext *ctx, JSValueConst this_val,
         res = -1;
     }
     CloseHandle(handle);
-    // res = stat(path, &st);
-    // DWORD dwAttrib = GetFileAttributesA(path);
-    // if (dwAttrib != INVALID_FILE_ATTRIBUTES && dwAttrib & FILE_ATTRIBUTE_REPARSE_POINT) {
-    //     st.st_mode |= S_IFLNK;
-    // }
 #else
     if (is_lstat)
         res = lstat(path, &st);
@@ -3013,7 +3008,7 @@ static JSValue js_os_symlink(JSContext *ctx, JSValueConst this_val,
 #if defined(_WIN32)
     DWORD dwAttrib = GetFileAttributesA(target);
     DWORD dwFlags = 0;
-    if (dwAttrib != INVALID_FILE_ATTRIBUTES && dwAttrib & FILE_ATTRIBUTE_DIRECTORY) {
+    if (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY) {
         dwFlags = 1;
     }
     if (CreateSymbolicLinkA(linkpath, target, dwFlags)) {

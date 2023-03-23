@@ -29,11 +29,13 @@
 #include <string.h>
 #include <assert.h>
 #include <ctype.h>
+#ifndef _WIN32
 #include <unistd.h>
+#include <ftw.h>
+#include <dirent.h>
+#endif
 #include <errno.h>
 #include <time.h>
-#include <dirent.h>
-#include <ftw.h>
 
 #include "cutils.h"
 #include "list.h"
@@ -85,8 +87,8 @@ int test_count, test_failed, test_index, test_skipped, test_excluded;
 int new_errors, changed_errors, fixed_errors;
 int async_done;
 
-void warning(const char *, ...) __attribute__((__format__(__printf__, 1, 2)));
-void fatal(int, const char *, ...) __attribute__((__format__(__printf__, 2, 3)));
+void warning(const char *, ...) util_format(__printf__, 1, 2);
+void fatal(int, const char *, ...) util_format(__printf__, 2, 3);
 
 void warning(const char *fmt, ...)
 {
@@ -359,6 +361,31 @@ static int add_test_file(const char *filename, const struct stat *ptr, int flag)
         namelist_add(lp, NULL, filename);
     return 0;
 }
+
+
+#ifdef _WIN32
+int ftw(char *path, int (*func)(const char *, const struct stat *, int), int nfd) {
+    HANDLE hFind;
+    WIN32_FIND_DATAA hData;
+    char* _path = (char*)malloc(strlen(path) + 3);
+    memset(_path, 0, strlen(path) + 3);
+    strcpy(_path, path);
+    strcpy(_path + strlen(path), "\\*");
+    hFind = FindFirstFileA(_path, &hData);
+    free(_path);
+    do
+    {
+        if (strcmp(hData.cFileName, ".") == 0 || strcmp(hData.cFileName, "..") == 0) {
+            continue;
+        }
+        if ((hData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY && nfd > 0) {
+            ftw(hData.cFileName, func, nfd-1);
+        }
+        func(hData.cFileName, NULL, 0);
+    } while (FindNextFileA(hFind, &hData));
+    FindClose(hFind);
+}
+#endif
 
 /* find js files from the directory tree and sort the list */
 static void enumerate_tests(const char *path)
@@ -644,14 +671,18 @@ static JSValue js_agent_sleep(JSContext *ctx, JSValue this_val,
     uint32_t duration;
     if (JS_ToUint32(ctx, &duration, argv[0]))
         return JS_EXCEPTION;
+#ifdef _WIN32
+    Sleep(duration);
+#else
     usleep(duration * 1000);
+#endif
     return JS_UNDEFINED;
 }
 
 static int64_t get_clock_ms(void)
 {
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+    clock_getrealtime(&ts);
     return (uint64_t)ts.tv_sec * 1000 + (ts.tv_nsec / 1000000);
 }
 
