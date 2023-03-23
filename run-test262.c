@@ -367,23 +367,28 @@ static int add_test_file(const char *filename, const struct stat *ptr, int flag)
 int ftw(char *path, int (*func)(const char *, const struct stat *, int), int nfd) {
     HANDLE hFind;
     WIN32_FIND_DATAA hData;
-    char* _path = (char*)malloc(strlen(path) + 3);
+    char* _path = (char*)malloc(_MAX_PATH + 1);
     memset(_path, 0, strlen(path) + 3);
     strcpy(_path, path);
     strcpy(_path + strlen(path), "\\*");
     hFind = FindFirstFileA(_path, &hData);
-    free(_path);
+    strcpy(_path, path);
+    int path_len = strlen(path);
+    strcpy(_path + path_len, "\\");
     do
     {
         if (strcmp(hData.cFileName, ".") == 0 || strcmp(hData.cFileName, "..") == 0) {
             continue;
         }
+        memset(_path + path_len + 1, 0, _MAX_PATH - path_len - 1);
+        strcpy(_path + path_len+1, hData.cFileName);
         if ((hData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY && nfd > 0) {
-            ftw(hData.cFileName, func, nfd-1);
+            ftw(_path, func, nfd-1);
         }
-        func(hData.cFileName, NULL, 0);
+        func(_path, NULL, 0);
     } while (FindNextFileA(hFind, &hData));
     FindClose(hFind);
+    free(_path);
 }
 #endif
 

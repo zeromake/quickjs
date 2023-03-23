@@ -2,3 +2,4 @@
 .xmake
 build
 unicode
+test262
