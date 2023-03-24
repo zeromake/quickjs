@@ -45,6 +45,8 @@
 #define PATH_MAX _MAX_PATH
 #ifndef S_IFLNK
 # define S_IFLNK 0xA000
+#define dup _dup
+#define dup2 _dup2
 #endif
 
 #else
@@ -3069,6 +3071,63 @@ static JSValue js_os_readlink(JSContext *ctx, JSValueConst this_val,
     return make_string_error(ctx, buf, err);
 }
 
+/* dup(fd) */
+static JSValue js_os_dup(JSContext *ctx, JSValueConst this_val,
+                         int argc, JSValueConst *argv)
+{
+    int fd, ret;
+    
+    if (JS_ToInt32(ctx, &fd, argv[0]))
+        return JS_EXCEPTION;
+    ret = js_get_errno(dup(fd));
+    return JS_NewInt32(ctx, ret);
+}
+
+/* dup2(fd) */
+static JSValue js_os_dup2(JSContext *ctx, JSValueConst this_val,
+                         int argc, JSValueConst *argv)
+{
+    int fd, fd2, ret;
+    
+    if (JS_ToInt32(ctx, &fd, argv[0]))
+        return JS_EXCEPTION;
+    if (JS_ToInt32(ctx, &fd2, argv[1]))
+        return JS_EXCEPTION;
+    ret = js_get_errno(dup2(fd, fd2));
+    return JS_NewInt32(ctx, ret);
+}
+
+/* pipe() -> [read_fd, write_fd] or null if error */
+static JSValue js_os_pipe(JSContext *ctx, JSValueConst this_val,
+                          int argc, JSValueConst *argv)
+{
+    int pipe_fds[2];
+    int ret;
+    JSValue obj;
+#ifdef _WIN32
+    HANDLE hReadPipe;
+    HANDLE hWritePipe;
+    if (CreatePipe(&hReadPipe, &hWritePipe, NULL, 0)) {
+        pipe_fds[0] = _open_osfhandle(hReadPipe, _O_RDONLY);
+        pipe_fds[1] = _open_osfhandle(hWritePipe, _O_WRONLY);
+    } else {
+        ret = GetLastError();
+    }
+#else
+    ret = pipe(pipe_fds);
+#endif
+    if (ret < 0)
+        return JS_NULL;
+    obj = JS_NewArray(ctx);
+    if (JS_IsException(obj))
+        return obj;
+    JS_DefinePropertyValueUint32(ctx, obj, 0, JS_NewInt32(ctx, pipe_fds[0]),
+                                 JS_PROP_C_W_E);
+    JS_DefinePropertyValueUint32(ctx, obj, 1, JS_NewInt32(ctx, pipe_fds[1]),
+                                 JS_PROP_C_W_E);
+    return obj;
+}
+
 #if !defined(_WIN32)
 static char **build_envp(JSContext *ctx, JSValueConst obj)
 {
@@ -3409,26 +3468,6 @@ static JSValue js_os_waitpid(JSContext *ctx, JSValueConst this_val,
     JS_DefinePropertyValueUint32(ctx, obj, 1, JS_NewInt32(ctx, status),
                                  JS_PROP_C_W_E);
     return obj;
-}    
-
-/* pipe() -> [read_fd, write_fd] or null if error */
-static JSValue js_os_pipe(JSContext *ctx, JSValueConst this_val,
-                          int argc, JSValueConst *argv)
-{
-    int pipe_fds[2], ret;
-    JSValue obj;
-    
-    ret = pipe(pipe_fds);
-    if (ret < 0)
-        return JS_NULL;
-    obj = JS_NewArray(ctx);
-    if (JS_IsException(obj))
-        return obj;
-    JS_DefinePropertyValueUint32(ctx, obj, 0, JS_NewInt32(ctx, pipe_fds[0]),
-                                 JS_PROP_C_W_E);
-    JS_DefinePropertyValueUint32(ctx, obj, 1, JS_NewInt32(ctx, pipe_fds[1]),
-                                 JS_PROP_C_W_E);
-    return obj;
 }
 
 /* kill(pid, sig) */
@@ -3444,33 +3483,6 @@ static JSValue js_os_kill(JSContext *ctx, JSValueConst this_val,
     ret = js_get_errno(kill(pid, sig));
     return JS_NewInt32(ctx, ret);
 }
-
-/* dup(fd) */
-static JSValue js_os_dup(JSContext *ctx, JSValueConst this_val,
-                         int argc, JSValueConst *argv)
-{
-    int fd, ret;
-    
-    if (JS_ToInt32(ctx, &fd, argv[0]))
-        return JS_EXCEPTION;
-    ret = js_get_errno(dup(fd));
-    return JS_NewInt32(ctx, ret);
-}
-
-/* dup2(fd) */
-static JSValue js_os_dup2(JSContext *ctx, JSValueConst this_val,
-                         int argc, JSValueConst *argv)
-{
-    int fd, fd2, ret;
-    
-    if (JS_ToInt32(ctx, &fd, argv[0]))
-        return JS_EXCEPTION;
-    if (JS_ToInt32(ctx, &fd2, argv[1]))
-        return JS_EXCEPTION;
-    ret = js_get_errno(dup2(fd, fd2));
-    return JS_NewInt32(ctx, ret);
-}
-
 #endif /* !_WIN32 */
 
 #ifdef USE_WORKER
@@ -4002,14 +4014,14 @@ static const JSCFunctionListEntry js_os_funcs[] = {
     JS_CFUNC_DEF("symlink", 2, js_os_symlink ),
     JS_CFUNC_DEF("issymlink", 1, js_os_issymlink ),
     JS_CFUNC_DEF("readlink", 1, js_os_readlink ),
+    JS_CFUNC_DEF("dup", 1, js_os_dup ),
+    JS_CFUNC_DEF("dup2", 2, js_os_dup2 ),
 #if !defined(_WIN32)
     JS_CFUNC_DEF("exec", 1, js_os_exec ),
     JS_CFUNC_DEF("waitpid", 2, js_os_waitpid ),
     OS_FLAG(WNOHANG),
     JS_CFUNC_DEF("pipe", 0, js_os_pipe ),
     JS_CFUNC_DEF("kill", 2, js_os_kill ),
-    JS_CFUNC_DEF("dup", 1, js_os_dup ),
-    JS_CFUNC_DEF("dup2", 2, js_os_dup2 ),
 #endif
 };
 

@@ -2,7 +2,7 @@
 #ifdef _WIN32
 #define OS_WINDOWS
 #endif
-#include "sock.h"
+#include "mini-sock.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>

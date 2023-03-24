@@ -240,7 +240,7 @@ function test_os_exec()
 
     ret = os.exec(["/bin/sh", "-c", "exit 1"], { usePath: false });
     assert(ret, 1);
-    
+
     fds = os.pipe();
     pid = os.exec(["sh", "-c", "echo $FOO"], {
         stdout: fds[1],
