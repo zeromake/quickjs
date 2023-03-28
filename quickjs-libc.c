@@ -2736,7 +2736,7 @@ inline static int fs__readlink_handle(HANDLE handle, char** target_ptr,
 static JSValue js_os_issymlink(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     const char *path;
     int err, res;
-    boolean is_symlink = false;
+    bool is_symlink = false;
     path = JS_ToCString(ctx, argv[0]);
     if (!path)
         return JS_EXCEPTION;
@@ -3188,6 +3188,10 @@ static char **build_envp(JSContext *ctx, JSValueConst obj)
     goto done;
 }
 
+#ifdef _WIN32
+
+#endif
+
 /* execvpe is not available on non GNU systems */
 static int my_execvpe(const char *filename, char **argv, char **envp)
 {
@@ -3204,9 +3208,14 @@ static int my_execvpe(const char *filename, char **argv, char **envp)
     if (strchr(filename, '/'))
         return execve(filename, argv, envp);
     
-    path = getenv("PATH");
-    if (!path)
+    path = lgetenv("PATH");
+    if (!path) {
+#ifdef _WIN32
+        path = (char *)"C:\\WINDOWS\\system32";
+#else
         path = (char *)"/bin:/usr/bin";
+#endif
+    }
     eacces_error = FALSE;
     p = path;
     for(p = path; p != NULL; p = p_next) {
@@ -3469,6 +3478,38 @@ static JSValue js_os_waitpid(JSContext *ctx, JSValueConst this_val,
                                  JS_PROP_C_W_E);
     return obj;
 }
+
+#ifdef _WIN32
+static const DWORD NEEDEDACCESS = PROCESS_QUERY_INFORMATION | PROCESS_VM_WRITE | PROCESS_VM_READ | PROCESS_VM_OPERATION | PROCESS_CREATE_THREAD;
+
+int waitpid(pid_t pid, int *status, int options) {
+    HANDLE hProcess = OpenProcess(NEEDEDACCESS, false, pid);
+    if (!hProcess) {
+        return -1;
+    }
+    int ret = WaitForSingleObject(hProcess, INFINITE);
+    DWORD s;
+    GetExitCodeProcess(hProcess, &s);
+    status = s;
+    return (ret == WAIT_OBJECT_0)? 0 : -ret;
+}
+
+int kill(int pid, int sig) {
+    DWORD sigType = CTRL_CLOSE_EVENT;
+    swich (sig) {
+        case SIGINT:
+            sigType = CTRL_C_EVENT;
+            break;
+        case SIGKILL:
+            sigType = CTRL_CLOSE_EVENT;
+            break;
+        case SIGTERM:
+            sigType = CTRL_BREAK_EVENT;
+            break;
+    }
+    return GenerateConsoleCtrlEvent(sigType, pid) ? 0 : -1;
+}
+#endif
 
 /* kill(pid, sig) */
 static JSValue js_os_kill(JSContext *ctx, JSValueConst this_val,
