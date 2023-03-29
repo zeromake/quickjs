@@ -180,7 +180,7 @@ target("tests/bjson")
         "JS_SHARED_LIBRARY=1",
         "JS_EXPORT=__declspec(dllexport)"
     )
-
+-- curl -L https://github.com/tc39/test262/tarball/36d2d2d -o tc39-test262.tgz
 target("run-test262")
     use_packages()
     add_deps("quickjs")
