@@ -3208,7 +3208,7 @@ static int my_execvpe(const char *filename, char **argv, char **envp)
     if (strchr(filename, '/'))
         return execve(filename, argv, envp);
     
-    path = lgetenv("PATH");
+    path = getenv("PATH");
     if (!path) {
 #ifdef _WIN32
         path = (char *)"C:\\WINDOWS\\system32";
