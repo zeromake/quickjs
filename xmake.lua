@@ -28,6 +28,7 @@ add_defines(
 )
 
 add_defines("CONFIG_DIRECT_DISPATCH="..(is_plat("windows") and "0" or "1"))
+add_defines("CONFIG_STACK_CHECK=1")
 
 package("skeeto-getopt")
     set_urls("https://github.com/skeeto/getopt/archive/4e618ef782dc80b2cf0307ea74b68e6a62b025de.zip")
@@ -185,3 +186,9 @@ target("run-test262")
     use_packages()
     add_deps("quickjs")
     add_files("run-test262.c")
+
+target("tsc")
+    use_packages()
+    add_includedirs(".")
+    add_deps("quickjs")
+    add_files("build/tsc.c")
