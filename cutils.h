@@ -276,7 +276,7 @@ static inline int64_t min_int64(int64_t a, int64_t b)
 static force_inline int clz32(unsigned int a)
 {
 #ifdef _WIN32
-    uint32_t leading_zero = 0;
+    unsigned long leading_zero = 0;
     /* failing to bit scan is undefined, returning 32 instead */
     return (_BitScanReverse(&leading_zero, a)) ? (31 - leading_zero) : 32;
 #else
@@ -288,7 +288,7 @@ static force_inline int clz32(unsigned int a)
 static force_inline int clz64(uint64_t a)
 {
 #ifdef _WIN32
-    uint32_t leading_zero = 0;
+    unsigned long leading_zero = 0;
     /* failing to bit scan is undefined, returning 64 instead */
     return (_BitScanReverse64(&leading_zero, a)) ? (63 - leading_zero) : 32;
 #else
@@ -300,7 +300,7 @@ static force_inline int clz64(uint64_t a)
 static inline int ctz32(unsigned int a)
 {
 #ifdef _WIN32
-    uint32_t trailing_zero = 0;
+    unsigned long trailing_zero = 0;
     /* failing to bit scan is undefined, returning 32 instead */
     return (_BitScanForward(&trailing_zero, a)) ? trailing_zero : 32;
 #else
@@ -312,7 +312,7 @@ static inline int ctz32(unsigned int a)
 static inline int ctz64(uint64_t a)
 {
 #ifdef _WIN32
-    uint32_t trailing_zero = 0;
+    unsigned long trailing_zero = 0;
     /* failing to bit scan is undefined, returning 64 instead */
     return (_BitScanForward64(&trailing_zero, a)) ? trailing_zero : 64;
 #else

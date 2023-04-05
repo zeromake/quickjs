@@ -28,7 +28,7 @@ add_defines(
 )
 
 add_defines("CONFIG_DIRECT_DISPATCH="..(is_plat("windows") and "0" or "1"))
-add_defines("CONFIG_STACK_CHECK=1")
+add_defines("CONFIG_LOADER_OS_ARCH_SO=1")
 
 package("skeeto-getopt")
     set_urls("https://github.com/skeeto/getopt/archive/4e618ef782dc80b2cf0307ea74b68e6a62b025de.zip")
@@ -100,7 +100,7 @@ local function use_packages()
     else
         add_syslinks("m", "dl", "pthread")
     end
-    if is_plat("windows", "mingw") then
+    if is_plat("windows", "mingw") and get_config("js-debugger") then
         add_syslinks("ws2_32")
     end
     if get_config("bignum") then

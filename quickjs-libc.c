@@ -34,21 +34,24 @@
 #include <signal.h>
 #include <limits.h>
 #include <sys/stat.h>
-#include <dlfcn.h>
+
 #if defined(_WIN32)
 #include <windows.h>
 #include <conio.h>
 #include <io.h>
 #include <sys/utime.h>
-
+#ifndef S_ISDIR
 #define S_ISDIR(m) ((m & _S_IFDIR) == _S_IFDIR)
+#endif
+#ifndef PATH_MAX
 #define PATH_MAX _MAX_PATH
+#endif
 #ifndef S_IFLNK
-# define S_IFLNK 0xA000
+#define S_IFLNK 0xA000
+#endif
 #define dup _dup
 #define dup2 _dup2
-#endif
-
+#define pipe(fds) _pipe(fds, 512, _O_BINARY)
 #else
 #include <dirent.h>
 #include <termios.h>
@@ -64,12 +67,11 @@ typedef sig_t sighandler_t;
 #define environ (*_NSGetEnviron())
 #endif
 #endif /* __APPLE__ */
+#endif /* _WIN32 */
 
-#endif
-
-#if !defined(_WIN32)
-/* enable the os.Worker API. IT relies on POSIX threads */
 #define USE_WORKER
+#if !defined(EMSCRIPTEN) && !defined(CONFIG_LOADER_SO)
+#define CONFIG_LOADER_SO
 #endif
 
 #ifdef USE_WORKER
@@ -77,9 +79,60 @@ typedef sig_t sighandler_t;
 #include <stdatomic.h>
 #endif
 
+#ifdef CONFIG_LOADER_SO
+#include <dlfcn.h>
+#endif
+
 #include "cutils.h"
 #include "list.h"
 #include "quickjs-libc.h"
+
+
+#if defined(_WIN32)
+#define OS_PLATFORM "win32"
+#elif defined(__APPLE__)
+#if TARGET_OS_OSX
+#define OS_PLATFORM "darwin"
+#else
+#define OS_PLATFORM "ios"
+#endif
+#elif defined(EMSCRIPTEN)
+#define OS_PLATFORM "wasm"
+#elif defined(_ANDROID_) || defined(ANDROID)
+#define OS_PLATFORM "android"
+#elif defined(__linux__)
+#define OS_PLATFORM "linux"
+#else
+#define OS_PLATFORM "unknown_platform"
+#endif
+
+#if defined(__i386) \
+    || defined(__i686) \
+    || defined(__i386__) \
+    || defined(__i686__) \
+    || defined(_M_IX86)
+#define OS_ARCH "x86"
+#elif defined(__x86_64) \
+    || defined(__amd64__) || defined(__amd64) \
+    || defined(__ia64__) || defined(__IA64__) || defined(__ia64) || defined(_M_IA64) \
+    || defined(_M_X64)
+#define OS_ARCH "x64"
+#elif defined(__arm__) \
+    || defined(__arm64) \
+    || defined(__arm64__) \
+    || (defined(__aarch64__) && __aarch64__) \
+    || defined(_M_ARM64) \
+    || defined(_M_ARM)
+#if (defined(__aarch64__) && __aarch64__)
+#define OS_ARCH "arm64"
+#else
+#define OS_ARCH "arm32"
+#endif
+#else
+#define OS_ARCH "unknown_arch"
+#endif
+
+#define OS_FLAG(x) JS_PROP_INT32_DEF(#x, x, JS_PROP_CONFIGURABLE )
 
 /* TODO:
    - add socket calls
@@ -463,14 +516,14 @@ typedef JSModuleDef *(JSInitModuleFunc)(JSContext *ctx,
                                         const char *module_name);
 
 
-// #if defined(_WIN32)
-// static JSModuleDef *js_module_loader_so(JSContext *ctx,
-//                                         const char *module_name)
-// {
-//     JS_ThrowReferenceError(ctx, "shared library modules are not supported yet");
-//     return NULL;
-// }
-// #else
+#if !defined(CONFIG_LOADER_SO)
+static JSModuleDef *js_module_loader_so(JSContext *ctx,
+                                        const char *module_name)
+{
+    JS_ThrowReferenceError(ctx, "shared library modules are not supported yet");
+    return NULL;
+}
+#else
 static JSModuleDef *js_module_loader_so(JSContext *ctx,
                                         const char *module_name)
 {
@@ -478,8 +531,12 @@ static JSModuleDef *js_module_loader_so(JSContext *ctx,
     void *hd;
     JSInitModuleFunc *init;
     char *filename;
-    
+
+#ifdef _WIN32
+    if (!(*module_name >= 'A' && *module_name <= 'z' && *(module_name+1) == ':')) {
+#else
     if (!strchr(module_name, '/')) {
+#endif
         /* must add a '/' so that the DLL is not searched in the
            system library paths */
         filename = js_malloc(ctx, strlen(module_name) + 2 + 1);
@@ -490,7 +547,23 @@ static JSModuleDef *js_module_loader_so(JSContext *ctx,
     } else {
         filename = (char *)module_name;
     }
-    
+#ifdef CONFIG_LOADER_OS_ARCH_SO
+    struct stat s;
+    memset(&s, 0, sizeof(struct stat));
+    if (!(stat(filename, &s) == 0 && S_ISREG(s.st_mode))) {
+        const size_t len = strlen(filename);
+        const size_t add_size = strlen(OS_PLATFORM) + strlen(OS_ARCH) + 1;
+        char* _filename = js_malloc(ctx, len + 2 + add_size);
+        memset(_filename, 0, len + 2 + add_size);
+        filename[len-3] = 0;
+        sprintf(_filename, "%s.%s.so", filename, OS_PLATFORM "-" OS_ARCH);
+        filename[len-3] = '.';
+        if (filename != module_name)
+            js_free(ctx, filename);
+        filename = _filename;
+    }
+#endif
+    printf("%s\n", filename);
     /* C module */
     hd = dlopen(filename, RTLD_NOW | RTLD_LOCAL);
     if (filename != module_name)
@@ -519,7 +592,7 @@ static JSModuleDef *js_module_loader_so(JSContext *ctx,
     }
     return m;
 }
-// #endif /* !_WIN32 */
+#endif
 
 int js_module_set_import_meta(JSContext *ctx, JSValueConst func_val,
                               JS_BOOL use_realpath, JS_BOOL is_main)
@@ -2445,7 +2518,6 @@ static JSValue js_os_readdir(JSContext *ctx, JSValueConst this_val,
 #else
     DIR *f;
 #endif
-    struct dirent *d;
     JSValue obj;
     int err = 0;
     uint32_t len = 0;
@@ -2520,7 +2592,7 @@ static int64_t timespec_to_ms(const struct timespec *tv)
     return (int64_t)tv->tv_sec * 1000 + (tv->tv_nsec / 1000000);
 }
 #else
-inline void filetime_to_ms(FILETIME t, time_t *tt) {
+static void filetime_to_ms(FILETIME t, time_t *tt) {
     ULARGE_INTEGER ui;
     ui.HighPart = t.dwHighDateTime;
     ui.LowPart = t.dwLowDateTime;
@@ -2739,15 +2811,14 @@ inline static int fs__readlink_handle(HANDLE handle, char** target_ptr,
 
 static JSValue js_os_issymlink(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     const char *path = NULL;
-    int err = 0, res = 0;
-    bool is_symlink = false;
+    BOOL is_symlink = FALSE;
     path = JS_ToCString(ctx, argv[0]);
     if (!path)
         return JS_EXCEPTION;
 #if defined(_WIN32)
     DWORD dwAttrib = GetFileAttributesA(path);
     if (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_REPARSE_POINT) == FILE_ATTRIBUTE_REPARSE_POINT) {
-        is_symlink = true;
+        is_symlink = TRUE;
     }
 #else
     struct stat st;
@@ -2776,7 +2847,6 @@ static JSValue js_os_stat(JSContext *ctx, JSValueConst this_val,
 #if defined(_WIN32)
     HANDLE handle = NULL;
     DWORD flags = 0;
-    DWORD ret = 0;
     flags = FILE_FLAG_BACKUP_SEMANTICS;
     if (is_lstat)
         flags |= FILE_FLAG_OPEN_REPARSE_POINT;
@@ -3052,7 +3122,6 @@ static JSValue js_os_readlink(JSContext *ctx, JSValueConst this_val,
 #ifdef _WIN32
     HANDLE handle;
     DWORD flags;
-    DWORD ret;
     flags = FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT;
     handle = CreateFileA(
         path,
@@ -3064,7 +3133,7 @@ static JSValue js_os_readlink(JSContext *ctx, JSValueConst this_val,
         NULL
     );
     char *buf2;
-    err = fs__readlink_handle(handle, &buf2, &res);
+    err = fs__readlink_handle(handle, &buf2, (uint64_t*)&res);
     CloseHandle(handle);
     strcpy(buf, buf2);
     free(buf2);
@@ -3122,8 +3191,8 @@ static JSValue js_os_pipe(JSContext *ctx, JSValueConst this_val,
     HANDLE hReadPipe;
     HANDLE hWritePipe;
     if (CreatePipe(&hReadPipe, &hWritePipe, NULL, 0)) {
-        pipe_fds[0] = _open_osfhandle(hReadPipe, _O_RDONLY);
-        pipe_fds[1] = _open_osfhandle(hWritePipe, _O_WRONLY);
+        pipe_fds[0] = _open_osfhandle((intptr_t)hReadPipe, _O_RDONLY);
+        pipe_fds[1] = _open_osfhandle((intptr_t)hWritePipe, _O_WRONLY);
     } else {
         ret = GetLastError();
     }
@@ -3603,7 +3672,6 @@ static JSWorkerMessagePipe *js_new_message_pipe(void)
 {
     JSWorkerMessagePipe *ps;
     int pipe_fds[2];
-    
     if (pipe(pipe_fds) < 0)
         return NULL;
 
@@ -3985,18 +4053,6 @@ void js_std_set_worker_new_context_func(JSContext *(*func)(JSRuntime *rt))
 #endif
 }
 
-#if defined(_WIN32)
-#define OS_PLATFORM "win32"
-#elif defined(__APPLE__)
-#define OS_PLATFORM "darwin"
-#elif defined(EMSCRIPTEN)
-#define OS_PLATFORM "js"
-#else
-#define OS_PLATFORM "linux"
-#endif
-
-#define OS_FLAG(x) JS_PROP_INT32_DEF(#x, x, JS_PROP_CONFIGURABLE )
-
 static const JSCFunctionListEntry js_os_funcs[] = {
     JS_CFUNC_DEF("open", 2, js_os_open ),
     OS_FLAG(O_RDONLY),
@@ -4044,6 +4100,7 @@ static const JSCFunctionListEntry js_os_funcs[] = {
     JS_CFUNC_DEF("setTimeout", 2, js_os_setTimeout ),
     JS_CFUNC_DEF("clearTimeout", 1, js_os_clearTimeout ),
     JS_PROP_STRING_DEF("platform", OS_PLATFORM, 0 ),
+    JS_PROP_STRING_DEF("arch", OS_ARCH, 0 ),
     JS_CFUNC_DEF("getcwd", 0, js_os_getcwd ),
     JS_CFUNC_DEF("chdir", 0, js_os_chdir ),
     JS_CFUNC_DEF("mkdir", 1, js_os_mkdir ),
