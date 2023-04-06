@@ -41,7 +41,10 @@
 #include <io.h>
 #include <sys/utime.h>
 #ifndef S_ISDIR
-#define S_ISDIR(m) ((m & _S_IFDIR) == _S_IFDIR)
+#define S_ISDIR(m) ((m & _S_IFMT) == _S_IFDIR)
+#endif
+#ifndef S_ISREG
+#define	S_ISREG(m) ((m & _S_IFMT) == S_IFREG)
 #endif
 #ifndef PATH_MAX
 #define PATH_MAX _MAX_PATH
@@ -87,8 +90,9 @@ typedef sig_t sighandler_t;
 #include "list.h"
 #include "quickjs-libc.h"
 
-
-#if defined(_WIN32)
+#if defined(__MINGW32__)
+#define OS_PLATFORM "mingw"
+#elif defined(_WIN32)
 #define OS_PLATFORM "win32"
 #elif defined(__APPLE__)
 #if TARGET_OS_OSX
