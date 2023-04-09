@@ -34,6 +34,7 @@
 #else
 #include <alloca.h>
 #endif
+#include <pthread.h> /* needed for timespec */
 
 /* set if CPU is big endian */
 #undef WORDS_BIGENDIAN
@@ -47,7 +48,6 @@
 
 #include <stdatomic.h>
 
-#include <pthread.h> /* needed for timespec */
 
 
 #ifdef __MINGW32__

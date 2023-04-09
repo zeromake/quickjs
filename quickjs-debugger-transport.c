@@ -145,7 +145,8 @@ static int js_debugger_parse_sockaddr(const char* address, struct sockaddr_in *a
     host_string[port_string - address] = 0;
     return socket_addr_from_ipv4(addr, host_string, port);
 }
-
+#undef JS_ASSERT_PRINT
+#undef JS_ASSERT_RET
 
 #define JS_ASSERT_PRINT fprintf(stdout, "client connect assert -> %s:%d\n", __FILE__, __LINE__);fflush(stdout)
 #define JS_ASSERT_RET
@@ -166,6 +167,8 @@ void js_debugger_connect(JSContext *ctx, const char *address) {
     data->handle = client;
     js_debugger_attach(ctx, js_transport_read, js_transport_write, js_transport_peek, js_transport_close, data);
 }
+
+#undef JS_ASSERT_PRINT
 
 #define JS_ASSERT_PRINT fprintf(stdout, "server connect assert -> %s:%d\n", __FILE__, __LINE__);fflush(stdout)
 
@@ -191,3 +194,6 @@ void js_debugger_wait_connection(JSContext *ctx, const char* address) {
     data->handle = client;
     js_debugger_attach(ctx, js_transport_read, js_transport_write, js_transport_peek, js_transport_close, data);
 }
+
+#undef JS_ASSERT_PRINT
+#undef JS_ASSERT_RET

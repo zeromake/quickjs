@@ -2521,6 +2521,7 @@ static JSValue js_os_readdir(JSContext *ctx, JSValueConst this_val,
     int f = 0;
 #else
     DIR *f;
+    struct dirent *d;
 #endif
     JSValue obj;
     int err = 0;
@@ -2826,7 +2827,7 @@ static JSValue js_os_issymlink(JSContext *ctx, JSValueConst this_val, int argc, 
     }
 #else
     struct stat st;
-    res = lstat(path, &st);
+    int res = lstat(path, &st);
     if (!res) {
         is_symlink = S_ISLNK(st.st_mode);
     }

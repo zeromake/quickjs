@@ -17,6 +17,9 @@ elseif is_plat("mingw") then
     add_ldflags("-static")
     add_shflags("-pthread")
     add_cxflags("-fPIC")
+elseif is_plat('android') then
+    add_ldflags("-pthread")
+    add_cxflags("-fPIC")
 else
     add_ldflags("-fPIC")
 end
@@ -97,6 +100,7 @@ local function use_packages()
         add_packages("skeeto-getopt", "simple-stdatomic", "pthread-win32", "dlfcn-win32")
     elseif is_plat("mingw") then
         add_packages("dlfcn-win32")
+    elseif is_plat("android") then
     else
         add_syslinks("m", "dl", "pthread")
     end
@@ -135,13 +139,13 @@ target("qjsc")
     use_packages()
     add_files("qjsc.c")
     add_deps("quickjs")
-
-target("qjs")
-    use_packages()
-    add_files("qjs.c", "build/repl.c", "build/qjscalc.c")
-    add_deps("qjsc")
-    before_build(function (target)
-        os.cd(path.join(os.scriptdir()))
+    after_build(function (target)
+        local qjscalc = vformat(path.join("$(buildir)", "qjscalc.c"));
+        local repl = vformat(path.join("$(buildir)", "repl.c"));
+        if os.exists(qjscalc) and os.exists(repl) then
+            return
+        end
+        os.cd(os.scriptdir())
         local argv = {}
         if get_config("bignum") then
             table.insert(argv, "-fbignum")
@@ -149,19 +153,29 @@ target("qjs")
         table.join2(argv, {
             "-c",
             "-o",
-            "build/qjscalc.c",
+            qjscalc,
             "qjscalc.js"
         })
-        os.execv(path.join(target:targetdir(), "qjsc"), argv)
-        os.execv(path.join(target:targetdir(), "qjsc"), {
+        local ext = ""
+        if os.host() == "windows" or os.host() == "mingw" then
+            ext = ".exe"
+        end
+        local qjsc = path.absolute(path.join("$(buildir)", os.host(), os.arch(), "release", "qjsc"))
+        os.vexecv(qjsc, argv)
+        os.vexecv(qjsc, {
             "-c",
             "-o",
-            "build/repl.c",
+            repl,
             "-m",
             "repl.js"
         })
         os.cd("-")
     end)
+
+target("qjs")
+    use_packages()
+    add_files("qjs.c", "build/repl.c", "build/qjscalc.c")
+    add_deps("qjsc")
 
 target("unicode_gen")
     use_packages()
