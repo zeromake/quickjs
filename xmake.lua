@@ -17,7 +17,7 @@ elseif is_plat("mingw") then
     add_ldflags("-static")
     add_shflags("-pthread")
     add_cxflags("-fPIC")
-elseif is_plat('android') then
+elseif is_plat('android', 'iphoneos') then
     add_ldflags("-pthread")
     add_cxflags("-fPIC")
 else
@@ -100,7 +100,7 @@ local function use_packages()
         add_packages("skeeto-getopt", "simple-stdatomic", "pthread-win32", "dlfcn-win32")
     elseif is_plat("mingw") then
         add_packages("dlfcn-win32")
-    elseif is_plat("android") then
+    elseif is_plat("android", "iphoneos") then
     else
         add_syslinks("m", "dl", "pthread")
     end
