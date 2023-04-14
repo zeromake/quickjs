@@ -90,9 +90,7 @@ typedef sig_t sighandler_t;
 #include "list.h"
 #include "quickjs-libc.h"
 
-#if defined(__MINGW32__)
-#define OS_PLATFORM "mingw"
-#elif defined(_WIN32)
+#if defined(_WIN32) || defined(__MINGW32__)
 #define OS_PLATFORM "win32"
 #elif defined(__APPLE__)
 #if TARGET_OS_OSX
@@ -567,7 +565,6 @@ static JSModuleDef *js_module_loader_so(JSContext *ctx,
         filename = _filename;
     }
 #endif
-    printf("%s\n", filename);
     /* C module */
     hd = dlopen(filename, RTLD_NOW | RTLD_LOCAL);
     if (filename != module_name)
