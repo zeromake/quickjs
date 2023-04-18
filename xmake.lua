@@ -89,169 +89,6 @@ target("dlfcn-win32")
     end)
 package_end()
 
-local quickjsfs = [[
-  function getQuickJSSystem() {
-    var executable_path = scriptArgs[0];
-    var args = scriptArgs.slice(1);
-    var useCaseSensitiveFileNames;
-    var newLine;
-    var realpath = function (path) {
-      var [res, err] = os.realpath(path);
-      return res;
-    };
-    if (os.platform === "win32") {
-      newLine = "\r\n";
-      useCaseSensitiveFileNames = false;
-    } else {
-      newLine = "\n";
-      useCaseSensitiveFileNames = true;
-    }
-    function getAccessibleFileSystemEntries(path) {
-      var entries, err, st;
-      [entries, err] = os.readdir(path || ".");
-      if (err != 0)
-        return emptyFileSystemEntries;
-      entries = entries.sort();
-      var files = [];
-      var directories = [];
-      for (var i = 0; i < entries.length; i++) {
-        var entry = entries[i];
-        if (entry === "." || entry === "..") {
-          continue;
-        }
-        var name = combinePaths(path, entry);
-        [st, err] = os.stat(name);
-        if (err != 0)
-          continue;
-        if ((st.mode & os.S_IFMT) == os.S_IFREG) {
-          files.push(entry);
-        } else if ((st.mode & os.S_IFMT) == os.S_IFDIR) {
-          directories.push(entry);
-        }
-      }
-      return { files: files, directories: directories };
-    }
-    function getDirectories(path) {
-      var entries, err, st;
-      var [entries, err] = os.readdir(path);
-      if (err != 0)
-        return [];
-      var directories = [];
-      for (var i = 0; i < entries.length; i++) {
-        var entry = entries[i];
-        var name = combinePaths(path, entry);
-        [st, err] = os.stat(name);
-        if (err != 0)
-          continue;
-        if ((st.mode & os.S_IFMT) == os.S_IFDIR) {
-          directories.push(entry);
-        }
-      }
-      return directories;
-    }
-
-    return {
-      newLine: newLine,
-      args: args,
-      useCaseSensitiveFileNames: useCaseSensitiveFileNames,
-      write: function (s) {
-        std.out.puts(s);
-      },
-      readFile: function (path, _encoding) {
-        var f, ret;
-        try {
-          f = std.open(path, "r");
-          ret = f.readAsString();
-          f.close();
-        } catch (e) {
-          ret = undefined;
-        }
-        return ret;
-      },
-      writeFile: function (path, data, writeByteOrderMark) {
-        var f;
-        try {
-          f = std.open(path, "w");
-          f.puts(data);
-          f.close();
-        } catch (e) {
-        }
-      },
-      resolvePath: function (s) { return s; },
-      fileExists: function (path) {
-        let [st, err] = os.stat(path);
-        if (err != 0)
-          return false;
-        return (st.mode & os.S_IFMT) == os.S_IFREG;
-      },
-      deleteFile: function (path) {
-        os.remove(path);
-      },
-      getModifiedTime: function (path) {
-        let [st, err] = os.stat(path);
-        if (err != 0)
-          throw std.Error(err);
-        return st.mtime; /* ms */
-      },
-      setModifiedTime: function (path, time) {
-        os.utimes(path, time, time);
-      },
-      directoryExists: function (path) {
-        let [st, err] = os.stat(path);
-        if (err != 0)
-          return false;
-        return (st.mode & os.S_IFMT) == os.S_IFDIR;
-      },
-      createDirectory: function (path) {
-        var ret;
-        ret = os.mkdir(path);
-        if (ret == -std.EEXIST)
-          throw new std.Error(-ret);
-      },
-      getExecutingFilePath: function () {
-        return executable_path;
-      },
-      getCurrentDirectory: function () {
-        var [cwd, err] = os.getcwd();
-        return cwd;
-      },
-      getDirectories: getDirectories,
-      getEnvironmentVariable: function (name) {
-        return std.getenv(name) || "";
-      },
-      readDirectory: function (path, extensions, excludes, includes, depth) {
-        let [cwd, err] = os.getcwd();
-        return matchFiles(path, extensions, excludes, includes, useCaseSensitiveFileNames, cwd, depth, getAccessibleFileSystemEntries, realpath);
-      },
-      exit: function (exitCode) {
-        std.exit(exitCode);
-      },
-      realpath: realpath,
-    };
-  }
-]]
-
-package("typescript-quickjs")
-    set_urls("https://registry.npmmirror.com/typescript/-/typescript-$(version).tgz")
-    add_versions("5.0.4", "1e83cd17f6d48dc60d539b64684d225c019db032685f28903aa45c42dac9fa5e")
-    on_install(function (package)
-        local tsc = io.readfile("lib/tsc.js")
-        tsc = tsc:gsub('"use strict";', [[
-import * as os from "os";
-import * as std from "std";
-        ]])
-        tsc = tsc:gsub('  function getNodeSystem%(%)', quickjsfs..'\n  function getNodeSystem()')
-        tsc = tsc:gsub('  if %(isNodeLikeSystem%(%)%) %{', [[
-  if (typeof os !== "undefined") {
-    sys2 = getQuickJSSystem();
-  } else if (isNodeLikeSystem()) {]])
-        io.writefile("lib/tsc.js", tsc)
-        os.cp("./*", package:installdir("lib/typescript").."/")
-    end)
-package_end()
-
-add_requires("typescript-quickjs")
-
 if is_plat("windows") then
     add_requires("skeeto-getopt", "simple-stdatomic", "pthread-win32", "dlfcn-win32")
 elseif is_plat("mingw") then
@@ -305,9 +142,8 @@ target("qjsc")
     after_build(function (target)
         local qjscalc = vformat(path.join("$(buildir)", "qjscalc.c"));
         local repl = vformat(path.join("$(buildir)", "repl.c"));
-        if os.exists(qjscalc) and os.exists(repl) then
-            return
-        end
+        local tsc = vformat(path.join("$(buildir)", "tsc.c"));
+        local tscjs = vformat(path.join("$(buildir)", "extract/ts/package/lib/tsc-quickjs.js"));
         os.cd(os.scriptdir())
         local argv = {}
         if get_config("bignum") then
@@ -324,14 +160,27 @@ target("qjsc")
             ext = ".exe"
         end
         local qjsc = path.absolute(path.join("$(buildir)", os.host(), os.arch(), "release", "qjsc"))
-        os.vexecv(qjsc, argv)
-        os.vexecv(qjsc, {
-            "-c",
-            "-o",
-            repl,
-            "-m",
-            "repl.js"
-        })
+        
+        if not os.exists(qjscalc) then
+          os.vexecv(qjsc, argv)
+        end
+        if not os.exists(repl) then
+          os.vexecv(qjsc, {
+              "-c",
+              "-o",
+              repl,
+              "-m",
+              "repl.js"
+          })
+        end
+        if os.exists(tscjs) and not os.exists(tsc) then
+          os.vexecv(qjsc, {
+              "-e",
+              "-o",
+              tsc,
+              tscjs,
+          })
+        end
         os.cd("-")
     end)
 
