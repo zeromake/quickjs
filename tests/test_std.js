@@ -116,7 +116,11 @@ function test_popen()
     assert(std.loadFile(fname), content);
     
     /* execute the 'cat' shell command */
-    f = std.popen("cat " + fname, "r");
+    if (os.platform === 'win32') {
+        f = std.popen("type " + fname, "r");
+    } else {
+        f = std.popen("cat " + fname, "r");
+    }
     str = f.readAsString();
     f.close();
 
@@ -284,6 +288,8 @@ test_file2();
 test_getline();
 test_popen();
 test_os();
-test_os_exec();
+if (os.platform !== 'win32') {
+    test_os_exec();
+}
 test_timer();
 test_ext_json();
