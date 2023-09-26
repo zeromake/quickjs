@@ -13,7 +13,7 @@ mkdir -p unicode
 
 for f in $files; do
     g="${url}/${f}"
-    wget $g -O unicode/$f
+    curl -o unicode/$f $g
 done
     
-wget $emoji_url -O unicode/emoji-data.txt
+curl -o unicode/emoji-data.txt $emoji_url

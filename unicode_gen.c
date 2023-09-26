@@ -615,7 +615,7 @@ void parse_derived_core_properties(const char *filename)
             if (i < 0) {
                 if (!strcmp(buf, "Grapheme_Link"))
                     goto next;
-                fprintf(stderr, "Property not found: %s\n", buf);
+                fprintf(stderr, "%s Property not found: %s\n", filename, buf);
                 exit(1);
             }
             for(c = c0; c <= c1; c++) {

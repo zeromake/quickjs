@@ -10,6 +10,8 @@ option("bignum")
     set_showmenu(true)
 option_end()
 
+set_rundir("$(projectdir)")
+
 if is_plat("windows") then
     add_cxflags("/utf-8")
 elseif is_plat("mingw") then
@@ -139,54 +141,10 @@ target("qjsc")
     use_packages()
     add_files("qjsc.c")
     add_deps("quickjs")
-    after_build(function (target)
-        local qjscalc = vformat(path.join("$(buildir)", "qjscalc.c"));
-        local repl = vformat(path.join("$(buildir)", "repl.c"));
-        local tsc = vformat(path.join("$(buildir)", "tsc.c"));
-        local tscjs = vformat(path.join("$(buildir)", "extract/ts/package/lib/tsc-quickjs.js"));
-        os.cd(os.scriptdir())
-        local argv = {}
-        if get_config("bignum") then
-            table.insert(argv, "-fbignum")
-        end
-        table.join2(argv, {
-            "-c",
-            "-o",
-            qjscalc,
-            "qjscalc.js"
-        })
-        local ext = ""
-        if os.host() == "windows" or os.host() == "mingw" then
-            ext = ".exe"
-        end
-        local qjsc = path.absolute(path.join("$(buildir)", os.host(), os.arch(), "release", "qjsc"))
-        
-        if not os.exists(qjscalc) then
-          os.vexecv(qjsc, argv)
-        end
-        if not os.exists(repl) then
-          os.vexecv(qjsc, {
-              "-c",
-              "-o",
-              repl,
-              "-m",
-              "repl.js"
-          })
-        end
-        if os.exists(tscjs) and not os.exists(tsc) then
-          os.vexecv(qjsc, {
-              "-e",
-              "-o",
-              tsc,
-              tscjs,
-          })
-        end
-        os.cd("-")
-    end)
 
 target("qjs")
     use_packages()
-    add_files("qjs.c", "build/repl.c", "build/qjscalc.c")
+    add_files("qjs.c", "build/generate/repl.c", "build/generate/qjscalc.c")
     add_deps("qjsc")
 
 target("unicode_gen")
@@ -217,4 +175,4 @@ target("tsc")
     use_packages()
     add_includedirs(".")
     add_deps("quickjs")
-    add_files("build/tsc.c")
+    add_files("build/generate/tsc.c")

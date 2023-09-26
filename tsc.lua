@@ -170,8 +170,8 @@ end
 local urls = {
   {
     "ts",
-    "https://registry.npmmirror.com/typescript/-/typescript-5.0.4.tgz",
-    "ts-5.0.4.tgz"
+    "https://registry.npmmirror.com/typescript/-/typescript-5.2.2.tgz",
+    "ts-5.2.2.tgz"
   }
 }
 
