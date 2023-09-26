@@ -1,7 +1,8 @@
 #!/bin/sh
 set -e
 
-url="ftp://ftp.unicode.org/Public/14.0.0/ucd"
+url="https://unicode.org/Public/15.1.0/ucd"
+# url="https://unicode.org/Public/14.0.0/ucd"
 emoji_url="${url}/emoji/emoji-data.txt"
 
 files="CaseFolding.txt DerivedNormalizationProps.txt PropList.txt \
@@ -13,6 +14,7 @@ mkdir -p unicode
 
 for f in $files; do
     g="${url}/${f}"
+    echo -e "${f}\n"
     curl -o unicode/$f $g
 done
     

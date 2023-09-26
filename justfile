@@ -1,12 +1,17 @@
+set windows-powershell := true
+
 QJSC := 'xmake r qjsc'
 GENERATE_DIR := 'build/generate'
 BUILD_COMMAND := 'xmake b -v'
+# [coreutils](https://github.com/uutils/coreutils)
+# [busybox](https://github.com/rmyorston/busybox-w32)
+CUP := if os() == 'windows' {'busybox '} else {''}
 
 init:
-	touch {{GENERATE_DIR}}/qjscalc.c
-	touch {{GENERATE_DIR}}/repl.c
-	touch {{GENERATE_DIR}}/tsc.c
-	mkdir -p build/generate
+	@{{CUP}}mkdir -p {{GENERATE_DIR}}
+	@{{CUP}}touch {{GENERATE_DIR}}/qjscalc.c
+	@{{CUP}}touch {{GENERATE_DIR}}/repl.c
+	@{{CUP}}touch {{GENERATE_DIR}}/tsc.c
 
 config: init
 	xmake f -c -y --bignum=y --js-debugger=y
@@ -27,8 +32,8 @@ generate_tsc:
 qjs: config generate_qjscalc generate_repl
 	{{BUILD_COMMAND}} qjs
 
-tsc:
+tsc: generate_tsc
 	{{BUILD_COMMAND}} tsc
 
 generate_unicode:
-	echo '1'
+	{{CUP}}echo '1'

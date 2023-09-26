@@ -2,6 +2,7 @@
 .xmake
 build
 unicode
+unicode-*
 test262
 node_modules
 .obj
