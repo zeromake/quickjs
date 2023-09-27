@@ -1,8 +1,11 @@
 set windows-powershell := true
+set positional-arguments
 
 QJSC := 'xmake r qjsc'
+QJS := 'xmake r qjs'
 GENERATE_DIR := 'build/generate'
-BUILD_COMMAND := 'xmake b -v'
+BUILD_COMMAND := 'xmake b -vD'
+MODE := 'relesae'
 # [coreutils](https://github.com/uutils/coreutils)
 # [busybox](https://github.com/rmyorston/busybox-w32)
 CUP := if os() == 'windows' {'busybox '} else {''}
@@ -14,7 +17,7 @@ init:
 	@{{CUP}}touch {{GENERATE_DIR}}/tsc.c
 
 config: init
-	xmake f -c -y --bignum=y --js-debugger=y
+	xmake f -c -y --bignum=y --js-debugger=y -m {{MODE}}
 
 qjsc: config
 	{{BUILD_COMMAND}} qjsc
@@ -35,5 +38,13 @@ qjs: config generate_qjscalc generate_repl
 tsc: generate_tsc
 	{{BUILD_COMMAND}} tsc
 
-generate_unicode:
-	{{CUP}}echo '1'
+test: qjs
+	{{QJS}} tests/test_closure.js
+	{{QJS}} tests/test_language.js
+	{{QJS}} tests/test_builtin.js
+	{{QJS}} tests/test_loop.js
+	{{QJS}} tests/test_std.js
+	{{QJS}} tests/test_worker.js
+	{{QJS}} --bignum tests/test_op_overloading.js
+	{{QJS}} --bignum tests/test_bignum.js
+	{{QJS}} --qjscalc tests/test_qjscalc.js

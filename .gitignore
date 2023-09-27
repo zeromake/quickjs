@@ -1,4 +1,5 @@
-.vscode
+.vscode/*.json
+!.vscode/launch.json
 .xmake
 build
 unicode
