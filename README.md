@@ -19,6 +19,10 @@ It optionally supports mathematical extensions such as big decimal floating poin
     - [x] js_module_loader_so use [dlfcn-win32](https://github.com/dlfcn-win32/dlfcn-win32) support dll
 - [x] support [vscode debugger](https://github.com/koush/vscode-quickjs-debug)
     - [x] support windows vscode debugger breakpoint file path is to lowercase and `\` replace to `/`
+- [ ] apply [pr](https://github.com/bellard/quickjs/pull)
+    - [x] [windows support](https://github.com/bellard/quickjs/pull/51), [cross platform](https://github.com/bellard/quickjs/pull/49)
+    - [x] [function line pc2line table](https://github.com/bellard/quickjs/pull)
+    - [x] [not a function error format var_name](https://github.com/bellard/quickjs/pull/117)
 
 ## Todo
 

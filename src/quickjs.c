@@ -16244,6 +16244,22 @@ typedef enum {
 #define FUNC_RET_YIELD      1
 #define FUNC_RET_YIELD_STAR 2
 
+static JSValue JS_ThrowTypeErrorNotAFunction(JSContext *ctx, JSAtom name)
+{
+    char buf[ATOM_GET_STR_BUF_SIZE];
+    return JS_ThrowTypeError(ctx, "'%s' is not a function",
+                             JS_AtomGetStr(ctx, buf, sizeof(buf), name));
+}
+
+static JSValue JS_ThrowTypeErrorNotAFunction2(JSContext *ctx, JSAtom first, JSAtom second)
+{
+    char buf1[ATOM_GET_STR_BUF_SIZE];
+    char buf2[ATOM_GET_STR_BUF_SIZE];
+    return JS_ThrowTypeError(ctx, "'%s.%s' is not a function",
+                            JS_AtomGetStr(ctx, buf1, sizeof(buf1), first),
+                            JS_AtomGetStr(ctx, buf2, sizeof(buf2), second));
+}
+
 /* argv[] is modified if (flags & JS_CALL_FLAG_COPY_ARGV) = 0. */
 static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
                                JSValueConst this_obj, JSValueConst new_target,
@@ -16718,7 +16734,65 @@ switch_restart:
             has_call_argc:
                 call_argv = sp - call_argc;
                 sf->cur_pc = pc;
-                ret_val = JS_CallInternal(ctx, call_argv[-1], JS_UNDEFINED,
+                JSValue func = call_argv[-1];
+                #define NOT_FONCTION(name) JS_ThrowTypeErrorNotAFunction(ctx, name);\
+                    goto exception;
+                // When the call is not a function, an exception is thrown and its name.
+                if (!JS_IsFunction(ctx, func)) {
+                    // Currently, only call0 is handled.
+                    if(opcode == OP_call0) {
+                        if(pc[-2] == OP_set_loc0) {
+                            NOT_FONCTION(b->vardefs[b->arg_count].var_name);
+                        } else if(pc[-2] == OP_set_loc1) {
+                            NOT_FONCTION(b->vardefs[b->arg_count + 1].var_name);
+                        } else if(pc[-2] == OP_set_loc2) {
+                            NOT_FONCTION(b->vardefs[b->arg_count + 2].var_name);
+                        } else if(pc[-2] == OP_set_loc3) {
+                            NOT_FONCTION(b->vardefs[b->arg_count + 3].var_name);
+                        } else if(pc[-3] == OP_set_loc8) {
+                            NOT_FONCTION(b->vardefs[pc[-2]].var_name);
+                        } else if(pc[-2] == OP_get_loc0) {
+                            NOT_FONCTION(b->vardefs[b->arg_count].var_name);
+                        } else if(pc[-2] == OP_get_loc1) {
+                            NOT_FONCTION(b->vardefs[b->arg_count + 1].var_name);
+                        } else if(pc[-2] == OP_get_loc2) {
+                            NOT_FONCTION(b->vardefs[b->arg_count + 2].var_name);
+                        } else if(pc[-2] == OP_get_loc3) {
+                            NOT_FONCTION(b->vardefs[b->arg_count + 3].var_name);
+                        } else if(pc[-4] == OP_get_arg) {
+                            NOT_FONCTION(b->vardefs[pc[-3]].var_name);
+                        } else if(pc[-2] == OP_get_arg0) {
+                            NOT_FONCTION(b->vardefs[0].var_name);
+                        } else if(pc[-2] == OP_get_arg1) {
+                            NOT_FONCTION(b->vardefs[1].var_name);
+                        } else if(pc[-2] == OP_get_arg2) {
+                            NOT_FONCTION(b->vardefs[2].var_name);
+                            goto exception;
+                        } else if(pc[-2] == OP_get_arg3) {
+                            NOT_FONCTION(b->vardefs[3].var_name);
+                        } else if(pc[-6] == OP_get_var){
+                            pc -= 5;
+                            NOT_FONCTION(get_u32(pc));
+                        } else if(pc[-4] == OP_get_var_ref) {
+                            NOT_FONCTION(b->closure_var[pc[-3]].var_name);
+                        } else if(pc[-2] == OP_get_var_ref0) {
+                            NOT_FONCTION(b->closure_var[0].var_name);
+                        } else if(pc[-2] == OP_get_var_ref1) {
+                            NOT_FONCTION(b->closure_var[1].var_name);
+                        } else if(pc[-2] == OP_get_var_ref2) {
+                            NOT_FONCTION(b->closure_var[2].var_name);
+                        } else if(pc[-2] == OP_get_var_ref3) {
+                            NOT_FONCTION(b->closure_var[3].var_name);
+                        }
+                    } else if(opcode == OP_call1) {
+                        if(pc[-3] == OP_fclosure8 && pc[-8] == OP_get_var) {
+                            pc -= 7;
+                            NOT_FONCTION(get_u32(pc));
+                        }
+                    }
+                }
+                #undef NOT_FONCTION
+                ret_val = JS_CallInternal(ctx, func, JS_UNDEFINED,
                                           JS_UNDEFINED, call_argc, call_argv, 0);
                 if (unlikely(JS_IsException(ret_val)))
                     goto exception;
@@ -16754,7 +16828,45 @@ switch_restart:
                 pc += 2;
                 call_argv = sp - call_argc;
                 sf->cur_pc = pc;
-                ret_val = JS_CallInternal(ctx, call_argv[-1], call_argv[-2],
+                JSValue func = call_argv[-1];
+                if(!JS_IsFunction(ctx, func)) {
+                    // Currently, only call_method is handled.
+                    if(opcode == OP_call_method) {
+                        if(pc[-5] == OP_push_const8 && pc[-10] == OP_get_field2) {
+                            pc -= 9;
+                            JS_ThrowTypeErrorNotAFunction(ctx, get_u32(pc));
+                            goto exception;
+                        } else if(pc[-8] == OP_get_field2) {
+                            pc -= 7;
+                            JS_ThrowTypeErrorNotAFunction(ctx, get_u32(pc));
+                            goto exception;
+                        } else if(pc[-4] == OP_push_0 && pc[-9] == OP_get_field2) {
+                            pc -= 8;
+                            JS_ThrowTypeErrorNotAFunction(ctx, get_u32(pc));
+                            goto exception;
+                        } else if(pc[-4] == OP_push_1) {
+                            if(pc[-9] == OP_get_field2) {
+                                pc -= 8;
+                                JS_ThrowTypeErrorNotAFunction(ctx, get_u32(pc));
+                                goto exception;
+                            } else if(pc[-5] == OP_push_0 && pc[-10] == OP_get_field2 && pc[-15] == OP_push_atom_value) {
+                                int first = pc - 14;
+                                int second = pc - 9;
+                                JS_ThrowTypeErrorNotAFunction2(ctx, get_u32(first), get_u32(second));
+                                goto exception;
+                            }
+                        } else if(pc[-8] == OP_push_atom_value && pc[-13] == OP_get_field2) {
+                            pc -= 12;
+                            JS_ThrowTypeErrorNotAFunction(ctx, get_u32(pc));
+                            goto exception;
+                        } else if(pc[-5] == OP_fclosure8 && pc[-10] == OP_get_field2) {
+                            pc -= 9;
+                            JS_ThrowTypeErrorNotAFunction(ctx, get_u32(pc));
+                            goto exception;
+                        }
+                    }
+                }
+                ret_val = JS_CallInternal(ctx, func, call_argv[-2],
                                           JS_UNDEFINED, call_argc, call_argv, 0);
                 if (unlikely(JS_IsException(ret_val)))
                     goto exception;
@@ -30926,8 +31038,8 @@ static __exception int resolve_variables(JSContext *ctx, JSFunctionDef *s)
 
     /* init with function start line to ensure generate a valid last line for one-line function */
 #ifdef CONFIG_DEBUGGER
-    line_num = 0;
-    // line_num = s->line_num;
+    // line_num = 0;
+    line_num = s->line_num; /* init with function start line num */
 #else
     line_num = 0;
 #endif
@@ -31069,17 +31181,18 @@ static __exception int resolve_variables(JSContext *ctx, JSFunctionDef *s)
 #ifdef CONFIG_DEBUGGER
                 if(pos + len < bc_len)
 #endif
+                    /* have dead code, remove it */
                     pos = skip_dead_code(s, bc_buf, bc_len, pos + len, &line);
 #ifdef CONFIG_DEBUGGER
                 else {
-                    //NOTE: already arrive the function end, give a valid value to save line num.
+                    /* already arrive the function end */
                     pos += len;
-                    line = line_num + 1;
+                    line = line_num + 1; /* line_num is inited with function start line, line_num + 1 goes outside */
                 }
 #endif
 
                 pos_next = pos;
-                //NOTE: use <= instead of < to allow we save the last line num
+                /* use <= to allow save the function next line num */
 #ifdef CONFIG_DEBUGGER
                 if (pos < bc_len && line >= 0 && line_num != line) {
                 // if (pos <= bc_len && line >= 0 && line_num != line) {
@@ -45404,6 +45517,11 @@ static int js_proxy_isArray(JSContext *ctx, JSValueConst obj)
     JSProxyData *s = JS_GetOpaque(obj, JS_CLASS_PROXY);
     if (!s)
         return FALSE;
+    // https://github.com/bellard/quickjs/pull/182
+    if (js_check_stack_overflow(ctx->rt, 0)) {
+        JS_ThrowStackOverflow(ctx);
+        return -1;
+    }
     if (s->is_revoked) {
         JS_ThrowTypeErrorRevokedProxy(ctx);
         return -1;
