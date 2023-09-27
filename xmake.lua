@@ -11,6 +11,7 @@ option("bignum")
 option_end()
 
 set_rundir("$(projectdir)")
+add_includedirs("src")
 
 if is_plat("windows") then
     add_cxflags("/utf-8")
@@ -26,7 +27,7 @@ else
     add_ldflags("-fPIC")
 end
 
-local version = "2021-03-27"
+local version = "2023-09-27"
 add_defines(
     format("CONFIG_VERSION=\"%s\"", version),
     "_GNU_SOURCE=1"
@@ -121,37 +122,37 @@ target("quickjs")
     set_kind("static")
     use_packages()
     add_files(
-        "quickjs.c",
-        "libregexp.c",
-        "libunicode.c",
-        "cutils.c",
-        "quickjs-libc.c"
+        "src/quickjs.c",
+        "src/libregexp.c",
+        "src/libunicode.c",
+        "src/cutils.c",
+        "src/quickjs-libc.c"
     )
     if get_config("bignum") then
-        add_files("libbf.c")
+        add_files("src/libbf.c")
     end
     if get_config("js-debugger") then
         add_files(
-            "quickjs-debugger.c",
-            "quickjs-debugger-transport.c"
+            "src/quickjs-debugger.c",
+            "src/quickjs-debugger-transport.c"
         )
     end
 
 target("qjsc")
     use_packages()
-    add_files("qjsc.c")
+    add_files("src/qjsc.c")
     add_deps("quickjs")
 
 target("qjs")
     use_packages()
-    add_files("qjs.c", "build/generate/repl.c", "build/generate/qjscalc.c")
+    add_files("src/qjs.c", "build/generate/repl.c", "build/generate/qjscalc.c")
     add_deps("qjsc")
 
 target("unicode_gen")
     use_packages()
     add_files(
-        "unicode_gen.c",
-        "cutils.c"
+        "src/unicode_gen.c",
+        "src/cutils.c"
     )
 
 target("tests/bjson")
@@ -169,7 +170,7 @@ target("tests/bjson")
 target("run-test262")
     use_packages()
     add_deps("quickjs")
-    add_files("run-test262.c")
+    add_files("tests/test262/run-test262.c")
 
 target("tsc")
     use_packages()

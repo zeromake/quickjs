@@ -175,8 +175,8 @@ local urls = {
   }
 }
 
-local dowloadDir = path.join(os.scriptdir(), "build", "download")
-local extractDir = path.join(os.scriptdir(), "build", "extract")
+local dowloadDir = path.join(os.scriptdir(), "..", "build", "download")
+local extractDir = path.join(os.scriptdir(), "..", "build", "extract")
 
 function main()
   if not os.exists(dowloadDir) then
@@ -199,11 +199,11 @@ function main()
   local tscOutput = path.join(tscPath, "lib/tsc-quickjs.js")
   if not os.exists(tscOutput) then
     local tsc = io.readfile(path.join(tscPath, "lib/tsc.js"))
-    tsc = tsc:gsub('"use strict";\nvar __defProp', [[
+    tsc = tsc:gsub('\n"use strict";\n', [[
 import * as os from "os";
 import * as std from "std";
 
-var __defProp]])
+]])
     tsc = tsc:gsub('  function getNodeSystem%(%)', quickjsfs..'\n  function getNodeSystem()')
     tsc = tsc:gsub('let sys2;\n  if %(isNodeLikeSystem%(%)%) %{', [[let sys2;
   if (typeof os !== "undefined") {

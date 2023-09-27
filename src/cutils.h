@@ -82,10 +82,8 @@
 #endif
 
 #if !defined(_SSIZE_T_DEFINED)
-#if defined(_WIN64)
-typedef unsigned __int64    ssize_t;
-#elif defined(_WIN32)
-typedef _W64 unsigned int   ssize_t;
+#if defined(_WIN32)
+typedef intptr_t ssize_t;
 #endif
 #define _SSIZE_T_DEFINED
 #endif
@@ -275,7 +273,7 @@ static inline int64_t min_int64(int64_t a, int64_t b)
 /* WARNING: undefined if a = 0 */
 static force_inline int clz32(unsigned int a)
 {
-#ifdef _WIN32
+#ifdef _MSC_VER
     unsigned long leading_zero = 0;
     /* failing to bit scan is undefined, returning 32 instead */
     return (_BitScanReverse(&leading_zero, a)) ? (31 - leading_zero) : 32;
@@ -287,10 +285,16 @@ static force_inline int clz32(unsigned int a)
 /* WARNING: undefined if a = 0 */
 static force_inline int clz64(uint64_t a)
 {
-#ifdef _WIN32
+#ifdef _MSC_VER
     unsigned long leading_zero = 0;
+#if INTPTR_MAX >= INT64_MAX
     /* failing to bit scan is undefined, returning 64 instead */
-    return (_BitScanReverse64(&leading_zero, a)) ? (63 - leading_zero) : 32;
+    if (_BitScanReverse64(&leading_zero, a)) return (int)(63 - leading_zero);
+#else
+    if (_BitScanReverse(&leading_zero, (uint32_t)(a >> 32))) return (int)(63 - (leading_zero + 32));
+    if (_BitScanReverse(&leading_zero, (uint32_t)(a))) return (int)(63 - leading_zero);
+#endif
+    return 64;
 #else
     return __builtin_clzll(a);
 #endif
@@ -311,10 +315,16 @@ static inline int ctz32(unsigned int a)
 /* WARNING: undefined if a = 0 */
 static inline int ctz64(uint64_t a)
 {
-#ifdef _WIN32
+#ifdef _MSC_VER
     unsigned long trailing_zero = 0;
+#if INTPTR_MAX >= INT64_MAX
     /* failing to bit scan is undefined, returning 64 instead */
-    return (_BitScanForward64(&trailing_zero, a)) ? trailing_zero : 64;
+    if (_BitScanForward64(&trailing_zero, a)) return (int)(trailing_zero);
+#else
+    if (_BitScanForward(&trailing_zero, (uint32_t)(a))) return (int)(trailing_zero);
+    if (_BitScanForward(&trailing_zero, (uint32_t)(a >> 32))) return (int)(trailing_zero + 32);
+#endif
+    return 64;
 #else
     return __builtin_ctzll(a);
 #endif

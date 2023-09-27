@@ -596,6 +596,18 @@ static JSModuleDef *js_module_loader_so(JSContext *ctx,
 }
 #endif
 
+#if defined(_WIN32)
+static char *realpath(const char *path, char *buf)
+{
+    if (!_fullpath(buf, path, PATH_MAX)) {
+        errno = ENOENT;
+        return NULL;
+    } else {
+        return buf;
+    }
+}
+#endif
+
 int js_module_set_import_meta(JSContext *ctx, JSValueConst func_val,
                               JS_BOOL use_realpath, JS_BOOL is_main)
 {
@@ -615,7 +627,6 @@ int js_module_set_import_meta(JSContext *ctx, JSValueConst func_val,
         return -1;
     if (!strchr(module_name, ':')) {
         strcpy(buf, "file://");
-#if !defined(_WIN32)
         /* realpath() cannot be used with modules compiled with qjsc
            because the corresponding module source code is not
            necessarily present */
@@ -627,7 +638,6 @@ int js_module_set_import_meta(JSContext *ctx, JSValueConst func_val,
                 return -1;
             }
         } else
-#endif
         {
             pstrcat(buf, sizeof(buf), module_name);
         }
@@ -3042,18 +3052,6 @@ static JSValue js_os_sleep(JSContext *ctx, JSValueConst this_val,
 #endif
     return JS_NewInt32(ctx, ret);
 }
-
-#if defined(_WIN32)
-static char *realpath(const char *path, char *buf)
-{
-    if (!_fullpath(buf, path, PATH_MAX)) {
-        errno = ENOENT;
-        return NULL;
-    } else {
-        return buf;
-    }
-}
-#endif
 
 /* return [path, errorcode] */
 static JSValue js_os_realpath(JSContext *ctx, JSValueConst this_val,
