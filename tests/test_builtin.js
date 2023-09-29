@@ -338,6 +338,8 @@ function test_number()
 
     assert((25).toExponential(0), "3e+1");
     assert((-25).toExponential(0), "-3e+1");
+    assert((24).toExponential(0), "2e+1");
+    assert((-24).toExponential(0), "-2e+1");
     assert((2.5).toPrecision(1), "3");
     assert((-2.5).toPrecision(1), "-3");
     assert((1.125).toFixed(2), "1.13");

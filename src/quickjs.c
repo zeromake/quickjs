@@ -72,10 +72,10 @@
 #define MALLOC_OVERHEAD  8
 #endif
 
-#if !defined(_WIN32)
 /* define it if printf uses the RNDN rounding mode instead of RNDNA */
 #define CONFIG_PRINTF_RNDN
-#endif
+
+#define JS_DBL_EPSILON 1e-6
 
 /* define to include Atomics.* operations which depend on the OS
    threads */
@@ -11413,6 +11413,9 @@ static int js_ecvt(double d, int n_digits, int *decpt, int *sign, char *buf,
                      buf_tmp, sizeof(buf_tmp));
             /* XXX: could use 2 digits to reduce the average running time */
             if (buf1[n_digits] == '5') {
+#if defined(__MINGW32__)
+                d += (sign1 ? -JS_DBL_EPSILON : JS_DBL_EPSILON);
+#else
                 js_ecvt1(d, n_digits + 1, &decpt1, &sign1, buf1, FE_DOWNWARD,
                          buf_tmp, sizeof(buf_tmp));
                 js_ecvt1(d, n_digits + 1, &decpt2, &sign2, buf2, FE_UPWARD,
@@ -11424,6 +11427,7 @@ static int js_ecvt(double d, int n_digits, int *decpt, int *sign, char *buf,
                     else
                         rounding_mode = FE_UPWARD;
                 }
+#endif
             }
         }
 #endif /* CONFIG_PRINTF_RNDN */
@@ -11464,6 +11468,9 @@ static void js_fcvt(char *buf, int buf_size, double d, int n_digits)
         rounding_mode = FE_TONEAREST;
         /* XXX: could use 2 digits to reduce the average running time */
         if (buf1[n1 - 1] == '5') {
+#if defined(__MINGW32__)
+            d += (buf1[0] == '-' ? -JS_DBL_EPSILON : JS_DBL_EPSILON);
+#else
             n1 = js_fcvt1(buf1, sizeof(buf1), d, n_digits + 1, FE_DOWNWARD);
             n2 = js_fcvt1(buf2, sizeof(buf2), d, n_digits + 1, FE_UPWARD);
             if (n1 == n2 && memcmp(buf1, buf2, n1) == 0) {
@@ -11473,6 +11480,7 @@ static void js_fcvt(char *buf, int buf_size, double d, int n_digits)
                 else
                     rounding_mode = FE_UPWARD;
             }
+#endif
         }
     }
 #endif /* CONFIG_PRINTF_RNDN */
@@ -16850,8 +16858,8 @@ switch_restart:
                                 JS_ThrowTypeErrorNotAFunction(ctx, get_u32(pc));
                                 goto exception;
                             } else if(pc[-5] == OP_push_0 && pc[-10] == OP_get_field2 && pc[-15] == OP_push_atom_value) {
-                                int first = pc - 14;
-                                int second = pc - 9;
+                                const uint8_t * first = pc - 14;
+                                const uint8_t * second = pc - 9;
                                 JS_ThrowTypeErrorNotAFunction2(ctx, get_u32(first), get_u32(second));
                                 goto exception;
                             }

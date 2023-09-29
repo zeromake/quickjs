@@ -256,6 +256,7 @@ function test_bigdecimal()
     assert(BigDecimal("    1234.1  ") === 1234.1m);
 
     assert(BigDecimal(0.1) === 0.1m);
+    assert(BigDecimal(0.0000001) === 0.0000001m);
     assert(BigDecimal(123) === 123m);
     assert(BigDecimal(true) === 1m);
 

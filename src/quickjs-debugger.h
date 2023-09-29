@@ -1,7 +1,6 @@
 #ifndef QUICKJS_DEBUGGER_H
 #define QUICKJS_DEBUGGER_H
 
-#include "config.h"
 #include "quickjs.h"
 #include <time.h>
 

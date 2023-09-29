@@ -3,15 +3,11 @@
     "configurations": [
 		{
 			"name": "lldb",
-			"type": "cppdbg",
+			"type": "lldb",
 			"request": "launch",
-			"program": "${workspaceFolder}/build/macosx/x86_64/debug/qjs",
-			"args": ["examples/hello.js"],
-			"stopAtEntry": false,
+			"program": "${workspaceFolder}/build/mingw/x86_64/debug/qjs.exe",
+			"args": ["tests/test_builtin.js"],
 			"cwd": "${workspaceFolder}",
-			"environment": [],
-			"externalConsole": false,
-			"MIMode": "lldb"
 		},
         {
 			"name": "Launch QuickJS",
