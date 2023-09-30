@@ -21,18 +21,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include "../quickjs.h"
+#include "quickjs.h"
 
 #define countof(x) (sizeof(x) / sizeof((x)[0]))
 
 static int fib(int n)
 {
-    if (n <= 0)
-        return 0;
-    else if (n == 1)
-        return 1;
-    else
-        return fib(n - 1) + fib(n - 2);
+    return (n <= 1) ? n : fib(n - 1) + fib(n - 2);
 }
 
 static JSValue js_fib(JSContext *ctx, JSValueConst this_val,

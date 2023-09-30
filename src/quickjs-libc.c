@@ -536,7 +536,12 @@ static JSModuleDef *js_module_loader_so(JSContext *ctx,
     char *filename;
 
 #ifdef _WIN32
-    if (!(*module_name >= 'A' && *module_name <= 'z' && *(module_name+1) == ':')) {
+    if (!(
+        (
+            (module_name[0] >= 'A' && module_name[0] <= 'Z') ||
+            (module_name[0] >= 'a' && module_name[0] <= 'z')
+        ) && module_name[1] == ':'
+    )) {
 #else
     if (!strchr(module_name, '/')) {
 #endif

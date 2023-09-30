@@ -119,7 +119,7 @@ local function use_packages()
 end
 
 target("quickjs")
-    set_kind("static")
+    set_kind("shared")
     use_packages()
     add_files(
         "src/quickjs.c",
@@ -128,6 +128,11 @@ target("quickjs")
         "src/cutils.c",
         "src/quickjs-libc.c"
     )
+    if is_plat("windows") then
+        add_files("build/generate/quickjs.def")
+    else
+        add_files("build/generate/quickjs.map")
+    end
     if get_config("bignum") then
         add_files("src/libbf.c")
     end
@@ -155,6 +160,20 @@ target("unicode_gen")
         "src/cutils.c"
     )
 
+local quickjs_host = {
+    windows= "win32",
+    macosx= "darwin",
+    iphoneos= "ios",
+    mingw= "win32",
+}
+
+local quickjs_arch = {
+    x86_64= "x64",
+    ["arm64-v8a"]= "arm64",
+    armeabi= "arm32",
+    ["armeabi-v7a"]= "arm32"
+}
+
 target("tests/bjson")
     set_kind("shared")
     use_packages()
@@ -166,6 +185,13 @@ target("tests/bjson")
         "JS_SHARED_LIBRARY=1",
         "JS_EXPORT=__declspec(dllexport)"
     )
+    after_build(function (target)
+        os.mkdir("$(buildir)/lib/")
+        local h = quickjs_host[os.host()] == nil and os.host() or quickjs_host[os.host()]
+        local a = quickjs_arch[os.arch()] == nil and os.arch() or quickjs_arch[os.arch()]
+        local pf = h.."-"..a
+        os.cp(target:targetfile(), "$(buildir)/lib/"..path.basename(target:targetfile()).."."..pf..".so")
+    end)
 -- curl -L https://github.com/tc39/test262/tarball/36d2d2d -o tc39-test262.tgz
 target("run-test262")
     use_packages()
