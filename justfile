@@ -67,3 +67,6 @@ run_test262: quickjs
 
 test262:
 	{{RUN_TEST262}} -m -c tests/test262/test262.conf
+
+test262o:
+	{{RUN_TEST262}} -m -c tests/test262/test262o.conf
