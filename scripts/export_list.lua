@@ -2,8 +2,14 @@ local list = {
     "JS_NewRuntime",
     "JS_NewRuntime2",
     "JS_FreeRuntime",
+    "JS_GetRuntime",
+    "JS_SetRuntimeInfo",
+    "JS_UpdateStackTop",
+    "JS_SetGCThreshold",
     "JS_NewContext",
     "JS_FreeContext",
+    "JS_GetContextOpaque",
+    "JS_SetContextOpaque",
     "JS_AddIntrinsicBigFloat",
     "JS_AddIntrinsicBigDecimal",
     "JS_AddIntrinsicOperators",
@@ -31,6 +37,11 @@ local list = {
     "JS_NewCFunctionData",
     "JS_SetConstructor",
     "JS_SetPropertyFunctionList",
+    "JS_Call",
+    "JS_SetCanBlock",
+    "JS_SetIsHTMLDDA",
+    "JS_ExecutePendingJob",
+    "JS_NewCFunction2",
 
     "JS_ToBool",
 
@@ -44,6 +55,10 @@ local list = {
     "JS_NewString",
     "JS_NewAtomString",
     "JS_ToString",
+
+    "JS_AtomToCString",
+    "JS_ToCStringLen2",
+    "JS_FreeCString",
 
     "JS_NewObjectProtoClass",
     "JS_NewObjectClass",
@@ -99,7 +114,11 @@ local list = {
     "JS_SetHostPromiseRejectionTracker",
     "JS_SetInterruptHandler",
 
+    "JS_IsError",
     "JS_ThrowRangeError",
+    "JS_ThrowTypeError",
+    "JS_ThrowOutOfMemory",
+    "JS_GetException",
 
     "js_malloc",
     "js_free",
@@ -117,6 +136,7 @@ local list = {
     "js_std_eval_binary",
     "js_std_promise_rejection_tracker",
     "js_std_set_worker_new_context_func",
+    "js_string_codePointRange",
     "strstart",
     "has_suffix",
     "pstrcpy",

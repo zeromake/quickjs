@@ -193,6 +193,18 @@ function test_array()
         err = true;
     }
     assert(err && a.toString() === "1,2,3,4");
+
+    // array len is 2^32 - 2
+    a = [];
+    var index = Math.pow(2, 32) - 2;
+    a[index] = 5;
+    assert(a.indexOf(5), index);
+    assert(a.lastIndexOf(5), index);
+    assert(a.includes(5));
+    
+    assert(a.indexOf(6), -1);
+    assert(a.lastIndexOf(6), -1);
+    assert(a.includes(6), false);
 }
 
 function test_string()

@@ -1,5 +1,7 @@
 Bugs:
 - modules: better error handling with cyclic module references
+- test262: array.length === (Math.pow(2, 32) - 2)
+- test262: array.length === Infinity error
 
 Misc ideas:
 - use custom printf to avoid compatibility issues with floating point numbers

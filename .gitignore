@@ -5,6 +5,7 @@ build
 unicode
 unicode-*
 /test262
+/test262o
 node_modules
 .obj
 *.exe

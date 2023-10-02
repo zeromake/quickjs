@@ -192,16 +192,25 @@ char *get_basename(const char *filename)
     return strdup_len(filename, p - filename);
 }
 
-char *compose_path(const char *path, const char *name)
+char *compose_path(const char *path, const char *_name)
 {
     int path_len, name_len;
     char *d, *q;
+    name_len = strlen(_name);
+    char *name = malloc(name_len + 1);
+    memcpy(name, _name, name_len);
 
-    if (!path || path[0] == '\0' || *name == '/') {
+    for (int n = 0; n < name_len; n++) {
+        if (name[n] == '\\') {
+            name[n] = '/';
+        }
+    }
+    name[name_len] = '\0';
+
+    if (!path || path[0] == '\0' || *name == '/' || *name == '\\') {
         d = strdup(name);
     } else {
         path_len = strlen(path);
-        name_len = strlen(name);
         d = malloc(path_len + 1 + name_len + 1);
         if (d) {
             q = d;
@@ -212,6 +221,7 @@ char *compose_path(const char *path, const char *name)
             memcpy(q, name, name_len + 1);
         }
     }
+    free(name);
     return d;
 }
 
@@ -1611,6 +1621,7 @@ int run_test(const char *filename, int index)
     buf = load_file(filename, &buf_len);
 
     harness = harness_dir;
+    // printf("run_test: %s\n", filename);
 
     if (new_style) {
         if (!harness) {

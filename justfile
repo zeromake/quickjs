@@ -2,9 +2,10 @@ set windows-powershell := true
 
 QJSC := 'xmake r qjsc'
 QJS := 'xmake r qjs'
+RUN_TEST262 := 'xmake r run-test262'
 GENERATE_DIR := 'build/generate'
 BUILD_COMMAND := 'xmake b -vD'
-MODE := 'release'
+MODE := 'debug'
 # [coreutils](https://github.com/uutils/coreutils)
 # [busybox](https://github.com/rmyorston/busybox-w32)
 CUP := if os() == 'windows' {'busybox '} else {''}
@@ -24,7 +25,7 @@ config: init
 generate_export:
 	xmake lua .\scripts\export_list.lua
 
-quickjs: config
+quickjs: config generate_export
 	{{BUILD_COMMAND}} quickjs
 
 qjsc: quickjs
@@ -60,3 +61,9 @@ test: qjs bjson
 	{{QJS}} tests/test_closure.js
 	{{QJS}} --bignum tests/test_bjson.js
 	# {{QJS}} tests/test_worker.js
+
+run_test262: quickjs
+	{{BUILD_COMMAND}} run-test262
+
+test262:
+	{{RUN_TEST262}} -m -c tests/test262/test262.conf

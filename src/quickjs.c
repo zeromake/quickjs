@@ -38928,6 +38928,8 @@ static JSValue js_array_includes(JSContext *ctx, JSValueConst this_val,
     int64_t len, n, res;
     JSValue *arrp;
     uint32_t count;
+    JSPropertyEnum *atoms = NULL;
+    uint32_t len2 = 0;
 
     obj = JS_ToObject(ctx, this_val);
     if (js_get_length64(ctx, &len, obj))
@@ -38940,7 +38942,7 @@ static JSValue js_array_includes(JSContext *ctx, JSValueConst this_val,
             if (JS_ToInt64Clamp(ctx, &n, argv[1], 0, len, len))
                 goto exception;
         }
-        if (js_get_fast_array(ctx, obj, &arrp, &count)) {
+        if (js_get_fast_array(ctx, obj, &arrp, &count) && count > 0) {
             for (; n < count; n++) {
                 if (js_strict_eq2(ctx, JS_DupValue(ctx, argv[0]),
                                   JS_DupValue(ctx, arrp[n]),
@@ -38950,22 +38952,42 @@ static JSValue js_array_includes(JSContext *ctx, JSValueConst this_val,
                 }
             }
         }
-        for (; n < len; n++) {
-            val = JS_GetPropertyInt64(ctx, obj, n);
-            if (JS_IsException(val))
-                goto exception;
-            if (js_strict_eq2(ctx, JS_DupValue(ctx, argv[0]), val,
-                              JS_EQ_SAME_VALUE_ZERO)) {
-                res = TRUE;
-                break;
+        JSObject* p = JS_VALUE_GET_OBJ(obj);
+        JS_GetOwnPropertyNamesInternal(ctx, &atoms, &len2, p, JS_GPN_STRING_MASK);
+        if (len2 > 0 && len2 < len) {
+            for (; n < len2; n++) {
+                JSValue k = JS_AtomToValue(ctx, atoms[n].atom);
+                int64_t kk = -1;
+                if (JS_ToInt64(ctx, &kk, k)) {
+                    break;
+                }
+                JS_FreeValue(ctx, k);
+                val = JS_GetPropertyInt64(ctx, obj, kk);
+                if (js_strict_eq2(ctx, JS_DupValue(ctx, argv[0]), val, JS_EQ_SAME_VALUE_ZERO)) {
+                    res = TRUE;
+                    break;
+                }
+            }
+        } else {
+            for (; n < len; n++) {
+                val = JS_GetPropertyInt64(ctx, obj, n);
+                if (JS_IsException(val))
+                    goto exception;
+                if (js_strict_eq2(ctx, JS_DupValue(ctx, argv[0]), val,
+                                JS_EQ_SAME_VALUE_ZERO)) {
+                    res = TRUE;
+                    break;
+                }
             }
         }
     }
  done:
+    js_free_prop_enum(ctx, atoms, len2);
     JS_FreeValue(ctx, obj);
     return JS_NewBool(ctx, res);
 
  exception:
+    js_free_prop_enum(ctx, atoms, len2);
     JS_FreeValue(ctx, obj);
     return JS_EXCEPTION;
 }
@@ -38977,6 +38999,8 @@ static JSValue js_array_indexOf(JSContext *ctx, JSValueConst this_val,
     int64_t len, n, res;
     JSValue *arrp;
     uint32_t count;
+    JSPropertyEnum *atoms = NULL;
+    uint32_t len2 = 0;
 
     obj = JS_ToObject(ctx, this_val);
     if (js_get_length64(ctx, &len, obj))
@@ -38989,7 +39013,7 @@ static JSValue js_array_indexOf(JSContext *ctx, JSValueConst this_val,
             if (JS_ToInt64Clamp(ctx, &n, argv[1], 0, len, len))
                 goto exception;
         }
-        if (js_get_fast_array(ctx, obj, &arrp, &count)) {
+        if (js_get_fast_array(ctx, obj, &arrp, &count) && count > 0) {
             for (; n < count; n++) {
                 if (js_strict_eq2(ctx, JS_DupValue(ctx, argv[0]),
                                   JS_DupValue(ctx, arrp[n]), JS_EQ_STRICT)) {
@@ -38998,23 +39022,43 @@ static JSValue js_array_indexOf(JSContext *ctx, JSValueConst this_val,
                 }
             }
         }
-        for (; n < len; n++) {
-            int present = JS_TryGetPropertyInt64(ctx, obj, n, &val);
-            if (present < 0)
-                goto exception;
-            if (present) {
-                if (js_strict_eq2(ctx, JS_DupValue(ctx, argv[0]), val, JS_EQ_STRICT)) {
-                    res = n;
+        JSObject* p = JS_VALUE_GET_OBJ(obj);
+        JS_GetOwnPropertyNamesInternal(ctx, &atoms, &len2, p, JS_GPN_STRING_MASK);
+        if (len2 > 0 && len2 < len) {
+            for (; n < len2; n++) {
+                JSValue k = JS_AtomToValue(ctx, atoms[n].atom);
+                int64_t kk = -1;
+                if (JS_ToInt64(ctx, &kk, k)) {
                     break;
+                }
+                JS_FreeValue(ctx, k);
+                val = JS_GetPropertyInt64(ctx, obj, kk);
+                if (js_strict_eq2(ctx, JS_DupValue(ctx, argv[0]), val, JS_EQ_STRICT)) {
+                    res = kk;
+                    break;
+                }
+            }
+        } else {
+            for (; n < len; n++) {
+                int present = JS_TryGetPropertyInt64(ctx, obj, n, &val);
+                if (present < 0)
+                    goto exception;
+                if (present) {
+                    if (js_strict_eq2(ctx, JS_DupValue(ctx, argv[0]), val, JS_EQ_STRICT)) {
+                        res = n;
+                        break;
+                    }
                 }
             }
         }
     }
  done:
+    js_free_prop_enum(ctx, atoms, len2);
     JS_FreeValue(ctx, obj);
     return JS_NewInt64(ctx, res);
 
  exception:
+    js_free_prop_enum(ctx, atoms, len2);
     JS_FreeValue(ctx, obj);
     return JS_EXCEPTION;
 }
@@ -39024,7 +39068,11 @@ static JSValue js_array_lastIndexOf(JSContext *ctx, JSValueConst this_val,
 {
     JSValue obj, val;
     int64_t len, n, res;
+    JSValue *arrp;
+    uint32_t count;
     int present;
+    JSPropertyEnum *atoms = NULL;
+    uint32_t len2 = 0;
 
     obj = JS_ToObject(ctx, this_val);
     if (js_get_length64(ctx, &len, obj))
@@ -39038,18 +39086,47 @@ static JSValue js_array_lastIndexOf(JSContext *ctx, JSValueConst this_val,
                 goto exception;
         }
         /* XXX: should special case fast arrays */
-        for (; n >= 0; n--) {
-            present = JS_TryGetPropertyInt64(ctx, obj, n, &val);
-            if (present < 0)
-                goto exception;
-            if (present) {
-                if (js_strict_eq2(ctx, JS_DupValue(ctx, argv[0]), val, JS_EQ_STRICT)) {
+        if (js_get_fast_array(ctx, obj, &arrp, &count) && count > 0) {
+            for (n = count -1; n >= 0; n--) {
+                if (js_strict_eq2(ctx, JS_DupValue(ctx, argv[0]),
+                                  JS_DupValue(ctx, arrp[n]), JS_EQ_STRICT)) {
                     res = n;
+                    goto done;
+                }
+            }
+        }
+        
+        JSObject* p = JS_VALUE_GET_OBJ(obj);
+        JS_GetOwnPropertyNamesInternal(ctx, &atoms, &len2, p, JS_GPN_STRING_MASK);
+        if (len2 > 0 && len2 < len) {
+            for (n = len2 - 1; n >= 0; n--) {
+                JSValue k = JS_AtomToValue(ctx, atoms[n].atom);
+                int64_t kk = -1;
+                if (JS_ToInt64(ctx, &kk, k)) {
+                    continue;
+                }
+                JS_FreeValue(ctx, k);
+                val = JS_GetPropertyInt64(ctx, obj, kk);
+                if (js_strict_eq2(ctx, JS_DupValue(ctx, argv[0]), val, JS_EQ_STRICT)) {
+                    res = kk;
                     break;
+                }
+            }
+        } else {
+            for (; n >= 0; n--) {
+                present = JS_TryGetPropertyInt64(ctx, obj, n, &val);
+                if (present < 0)
+                    goto exception;
+                if (present) {
+                    if (js_strict_eq2(ctx, JS_DupValue(ctx, argv[0]), val, JS_EQ_STRICT)) {
+                        res = n;
+                        break;
+                    }
                 }
             }
         }
     }
+done:
     JS_FreeValue(ctx, obj);
     return JS_NewInt64(ctx, res);
 
