@@ -119,7 +119,7 @@ local function use_packages()
 end
 
 target("quickjs")
-    set_kind("shared")
+    set_kind("$(kind)")
     use_packages()
     add_files(
         "src/quickjs.c",
@@ -128,7 +128,7 @@ target("quickjs")
         "src/cutils.c",
         "src/quickjs-libc.c"
     )
-    if is_plat("windows") then
+    if is_plat("windows", "mingw") then
         add_files("build/generate/quickjs.def")
     else
         add_files("build/generate/quickjs.map")

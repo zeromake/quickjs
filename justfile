@@ -18,7 +18,7 @@ init:
 	@{{CUP}}touch {{GENERATE_DIR}}/quickjs.def
 	@{{CUP}}touch {{GENERATE_DIR}}/quickjs.map
 
-#  -p mingw --mingw=D:\Scoop\Program\llvm-mingw
+# -p mingw --mingw=D:\Scoop\Program\llvm-mingw
 config: init
 	xmake f -m {{MODE}} -c -y --bignum=y --js-debugger=y
 

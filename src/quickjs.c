@@ -72,10 +72,10 @@
 #define MALLOC_OVERHEAD  8
 #endif
 
+#ifndef _WIN32
 /* define it if printf uses the RNDN rounding mode instead of RNDNA */
 #define CONFIG_PRINTF_RNDN
-
-#define JS_DBL_EPSILON 1e-6
+#endif
 
 /* define to include Atomics.* operations which depend on the OS
    threads */
@@ -11353,6 +11353,33 @@ static char *i64toa(char *buf_end, int64_t n, unsigned int base)
 static void js_ecvt1(double d, int n_digits, int *decpt, int *sign, char *buf,
                      int rounding_mode, char *buf1, int buf1_size)
 {
+    
+#ifdef _WIN32
+    int dec = 0;
+    _ecvt_s(buf, buf1_size, d, n_digits, &dec, sign);
+    int offset = 0;
+    int target = 0;
+    if (*sign) {
+        buf1[offset] = '-';
+        offset++;
+    }
+    int l = strlen(buf);
+    buf1[offset] = buf[target];
+    offset++;
+    target++;
+    *decpt = dec;
+    if (l > 1) {
+        buf1[offset] = '.';
+        offset++;
+        int len = l - target;
+        memcpy(buf1+offset, buf+target, len);
+        offset += len;
+        target += len;
+        int n = snprintf(buf1+offset, buf1_size-offset, "e%+d", dec-1);
+        offset += n;
+    }
+    buf1[offset] = '\0';
+#else
     if (rounding_mode != FE_TONEAREST)
         fesetround(rounding_mode);
     snprintf(buf1, buf1_size, "%+.*e", n_digits - 1, d);
@@ -11366,6 +11393,7 @@ static void js_ecvt1(double d, int n_digits, int *decpt, int *sign, char *buf,
     buf[n_digits] = '\0';
     /* exponent */
     *decpt = atoi(buf1 + n_digits + 2 + (n_digits > 1)) + 1;
+#endif
 }
 
 /* maximum buffer size for js_dtoa */
@@ -11413,9 +11441,6 @@ static int js_ecvt(double d, int n_digits, int *decpt, int *sign, char *buf,
                      buf_tmp, sizeof(buf_tmp));
             /* XXX: could use 2 digits to reduce the average running time */
             if (buf1[n_digits] == '5') {
-#if defined(__MINGW32__)
-                d += (sign1 ? -JS_DBL_EPSILON : JS_DBL_EPSILON);
-#else
                 js_ecvt1(d, n_digits + 1, &decpt1, &sign1, buf1, FE_DOWNWARD,
                          buf_tmp, sizeof(buf_tmp));
                 js_ecvt1(d, n_digits + 1, &decpt2, &sign2, buf2, FE_UPWARD,
@@ -11427,7 +11452,6 @@ static int js_ecvt(double d, int n_digits, int *decpt, int *sign, char *buf,
                     else
                         rounding_mode = FE_UPWARD;
                 }
-#endif
             }
         }
 #endif /* CONFIG_PRINTF_RNDN */
@@ -11441,11 +11465,38 @@ static int js_fcvt1(char *buf, int buf_size, double d, int n_digits,
                     int rounding_mode)
 {
     int n;
+#ifdef _WIN32
+    char buf2[_CVTBUFSIZE] = {0};
+    int dec = 0;
+    int sign = 0;
+    _fcvt_s(buf2, _CVTBUFSIZE, d, n_digits, &dec, &sign);
+    int offset = 0;
+    int target = 0;
+    if (sign) {
+        buf[offset] = '-';
+        offset++;
+    }
+    int len = strlen(buf2);
+    memcpy(buf+offset, buf2, dec);
+    offset += dec;
+    target += dec;
+    if (len > dec) {
+        buf[offset] = '.';
+        offset++;
+        int l = len - target;
+        memcpy(buf+offset, buf2+target, l);
+        offset += l;
+        target += l;
+    }
+    buf[offset] = '\0';
+    n = offset;
+#else
     if (rounding_mode != FE_TONEAREST)
         fesetround(rounding_mode);
     n = snprintf(buf, buf_size, "%.*f", n_digits, d);
     if (rounding_mode != FE_TONEAREST)
         fesetround(FE_TONEAREST);
+#endif
     assert(n < buf_size);
     return n;
 }
@@ -11468,9 +11519,6 @@ static void js_fcvt(char *buf, int buf_size, double d, int n_digits)
         rounding_mode = FE_TONEAREST;
         /* XXX: could use 2 digits to reduce the average running time */
         if (buf1[n1 - 1] == '5') {
-#if defined(__MINGW32__)
-            d += (buf1[0] == '-' ? -JS_DBL_EPSILON : JS_DBL_EPSILON);
-#else
             n1 = js_fcvt1(buf1, sizeof(buf1), d, n_digits + 1, FE_DOWNWARD);
             n2 = js_fcvt1(buf2, sizeof(buf2), d, n_digits + 1, FE_UPWARD);
             if (n1 == n2 && memcmp(buf1, buf2, n1) == 0) {
@@ -11480,7 +11528,6 @@ static void js_fcvt(char *buf, int buf_size, double d, int n_digits)
                 else
                     rounding_mode = FE_UPWARD;
             }
-#endif
         }
     }
 #endif /* CONFIG_PRINTF_RNDN */
