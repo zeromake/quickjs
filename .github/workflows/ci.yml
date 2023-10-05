@@ -15,8 +15,8 @@ jobs:
       - name: install just
         shell: powershell
         run: |
-          winget install --id Casey.Just --exact
-          winget install --id Xmake-io.Xmake --exact
+          winget install --id Casey.Just --exact --disable-interactivity
+          winget install --id Xmake-io.Xmake --exact --disable-interactivity
       - uses: actions/checkout@v3
       - name: 
         shell: powershell
@@ -40,8 +40,8 @@ jobs:
       - name: install just
         shell: powershell
         run: |
-          winget install --id Casey.Just --exact
-          winget install --id Xmake-io.Xmake --exact
+          winget install --id Casey.Just --exact --disable-interactivity
+          winget install --id Xmake-io.Xmake --exact --disable-interactivity
       - name: build
         shell: msys2 {0}
         run: |
