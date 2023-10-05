@@ -12,6 +12,7 @@ option_end()
 
 set_rundir("$(projectdir)")
 add_includedirs("src")
+add_repositories("zeromake https://github.com/zeromake/xrepo.git")
 
 if is_plat("windows") then
     add_cxflags("/utf-8")
