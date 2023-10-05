@@ -20,7 +20,7 @@ init:
 
 # -p mingw --mingw=D:\Scoop\Program\llvm-mingw
 config: init
-	xmake f -m {{MODE}} -c -y --bignum=y --js-debugger=y
+	xmake f -m {{MODE}} -c -y -k static --bignum=y --js-debugger=y
 
 generate_export:
 	xmake lua ./scripts/export_list.lua

@@ -21,6 +21,7 @@ jobs:
       - name: 
         shell: powershell
         run: |
+          $env:path+=";C:\Users\$($env:username)\AppData\Local\Microsoft\WinGet\Links"
           just test
 
   windows-mingw:
@@ -45,6 +46,7 @@ jobs:
       - name: build
         shell: msys2 {0}
         run: |
+          export PATH="${PATH}:~/AppData/Local/Microsoft/WinGet/Links"
           just test
   osx:
     name: macos build
