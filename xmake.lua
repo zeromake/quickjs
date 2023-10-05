@@ -19,9 +19,14 @@ if is_plat("windows") then
 elseif is_plat("mingw") then
     add_ldflags("-pthread")
     add_ldflags("-static")
-    -- add_shflags("-pthread")
+    add_ldflags("-fPIC")
+    add_cxflags("-fPIC")
+    add_shflags("-fPIC")
 elseif is_plat('android', 'iphoneos') then
     add_ldflags("-pthread")
+    add_ldflags("-fPIC")
+    add_cxflags("-fPIC")
+    add_shflags("-fPIC")
 end
 
 local version = "2023-09-27"
@@ -184,10 +189,7 @@ target("tests/bjson")
     if is_plat("windows", "mingw") then
         add_defines("JS_EXPORT=__declspec(dllexport)")
     else
-        add_defines("JS_EXPORT=")
-    end
-    if not is_plat("windows") then
-        add_shflags("-fPIC")
+        add_files("src/module.map")
     end
     after_build(function (target)
         os.mkdir("$(buildir)/lib/")

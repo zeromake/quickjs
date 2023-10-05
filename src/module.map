@@ -1,0 +1,5 @@
+{
+global:
+    js_init_module;
+local:*
+}
