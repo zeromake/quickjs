@@ -16,7 +16,7 @@ jobs:
         shell: powershell
         run: |
           winget install --id Casey.Just --exact --disable-interactivity --accept-source-agreements
-          winget install --id Xmake-io.Xmake --exact --disable-interactivity --accept-source-agreements
+          winget install xmake --disable-interactivity --accept-source-agreements
       - uses: actions/checkout@v3
       - name: 
         shell: powershell
@@ -41,7 +41,7 @@ jobs:
         shell: powershell
         run: |
           winget install --id Casey.Just --exact --disable-interactivity --accept-source-agreements
-          winget install --id Xmake-io.Xmake --exact --disable-interactivity --accept-source-agreements
+          winget install --id Xmake-io.Xmake --disable-interactivity --accept-source-agreements
       - name: build
         shell: msys2 {0}
         run: |

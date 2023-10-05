@@ -160,7 +160,8 @@ for _, fn in ipairs(list) do
     extractMapFile:write(string.format('    %s;\n', fn))
     extractDefFile:write(string.format('        %s\n', fn))
 end
-extractMapFile:write([[local:*
-}]])
+extractMapFile:write([[local:
+    *;
+};]])
 extractMapFile:close()
 extractDefFile:close()
