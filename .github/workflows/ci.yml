@@ -10,8 +10,6 @@ jobs:
         uses: GuillaumeFalourd/setup-windows10-sdk-action@v1.11
         with:
           sdk-version: 20348
-      - name: Install winget
-        uses: Cyberboss/install-winget@v1
       - name: install just
         shell: powershell
         run: |
@@ -39,8 +37,6 @@ jobs:
             git
             p7zip
       - uses: actions/checkout@v3
-      - name: Install winget
-        uses: Cyberboss/install-winget@v1
       - name: install just
         shell: powershell
         run: |
@@ -52,7 +48,7 @@ jobs:
       - name: build
         shell: msys2 {0}
         run: |
-          export PATH="$PATH:$HOME/scoop/shims"
+          export PATH="$PATH:/c/Users/$USER/scoop/shims"
           just test
   osx:
     name: macos build
