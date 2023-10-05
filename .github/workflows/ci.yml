@@ -19,8 +19,7 @@ jobs:
           .\install.ps1 -RunAsAdmin
           Remove-Item .\install.ps1
           scoop update
-          scoop bucket add extras
-          scoop install xmake just
+          scoop install main/xmake main/just main/busybox
       - uses: actions/checkout@v3
       - name: 
         shell: powershell
@@ -49,12 +48,11 @@ jobs:
           .\install.ps1 -RunAsAdmin
           Remove-Item .\install.ps1
           scoop update
-          scoop bucket add extras
-          scoop install xmake just
+          scoop install main/xmake main/just main/busybox
       - name: build
         shell: msys2 {0}
         run: |
-          export PATH="${PATH}:~/scoop/shims"
+          export PATH="$PATH:$HOME/scoop/shims"
           just test
   osx:
     name: macos build
