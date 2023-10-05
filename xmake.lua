@@ -183,9 +183,13 @@ target("tests/bjson")
         "tests/bjson.c"
     )
     add_defines(
-        "JS_SHARED_LIBRARY=1",
-        "JS_EXPORT=__declspec(dllexport)"
+        "JS_SHARED_LIBRARY=1"
     )
+    if is_plat("windows", "mingw") then
+        add_defines("JS_EXPORT=__declspec(dllexport)")
+    else
+        add_defines("JS_EXPORT=")
+    end
     after_build(function (target)
         os.mkdir("$(buildir)/lib/")
         local h = quickjs_host[os.host()] == nil and os.host() or quickjs_host[os.host()]
