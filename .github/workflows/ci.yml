@@ -15,13 +15,17 @@ jobs:
       - name: install just
         shell: powershell
         run: |
-          winget install --id Casey.Just --exact --disable-interactivity --accept-source-agreements
-          winget install xmake --disable-interactivity --accept-source-agreements
+          iwr -useb get.scoop.sh -outfile 'install.ps1'
+          .\install.ps1 -RunAsAdmin
+          Remove-Item .\install.ps1
+          scoop update
+          scoop bucket add extras
+          scoop install xmake just
       - uses: actions/checkout@v3
       - name: 
         shell: powershell
         run: |
-          $env:path+=";C:\Users\$($env:username)\AppData\Local\Microsoft\WinGet\Links"
+          $env:path+=";$Home\scoop\shims"
           just test
 
   windows-mingw:
@@ -41,12 +45,16 @@ jobs:
       - name: install just
         shell: powershell
         run: |
-          winget install --id Casey.Just --exact --disable-interactivity --accept-source-agreements
-          winget install --id Xmake-io.Xmake --disable-interactivity --accept-source-agreements
+          iwr -useb get.scoop.sh -outfile 'install.ps1'
+          .\install.ps1 -RunAsAdmin
+          Remove-Item .\install.ps1
+          scoop update
+          scoop bucket add extras
+          scoop install xmake just
       - name: build
         shell: msys2 {0}
         run: |
-          export PATH="${PATH}:~/AppData/Local/Microsoft/WinGet/Links"
+          export PATH="${PATH}:~/scoop/shims"
           just test
   osx:
     name: macos build

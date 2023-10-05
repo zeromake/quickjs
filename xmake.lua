@@ -127,6 +127,7 @@ target("quickjs")
     if is_plat("windows", "mingw") then
         add_files("build/generate/quickjs.def")
     else
+        add_cxflags("-fPIC")
         add_files("build/generate/quickjs.map")
     end
     if get_config("bignum") then
