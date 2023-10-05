@@ -23,7 +23,7 @@ config: init
 	xmake f -m {{MODE}} -c -y --bignum=y --js-debugger=y
 
 generate_export:
-	xmake lua .\scripts\export_list.lua
+	xmake lua ./scripts/export_list.lua
 
 quickjs: config generate_export
 	{{BUILD_COMMAND}} quickjs

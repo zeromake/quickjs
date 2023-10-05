@@ -10,18 +10,15 @@ jobs:
         uses: GuillaumeFalourd/setup-windows10-sdk-action@v1.11
         with:
           sdk-version: 20348
-      - name: Install NSIS
+      - name: install just
         shell: powershell
         run: |
-          Invoke-Expression (Invoke-Webrequest 'https://xmake.io/psget.text' -UseBasicParsing).Content
-          xmake --version
-      - name: install just
-        uses: extractions/setup-just@v1
+          winget install --id Casey.Just --exact
+          winget install --id Xmake-io.Xmake --exact
       - uses: actions/checkout@v3
       - name: 
         shell: powershell
         run: |
-          $env:path+=";C:\Users\$($env:username)\xmake"
           just test
 
   windows-mingw:
@@ -37,7 +34,10 @@ jobs:
             p7zip
       - uses: actions/checkout@v3
       - name: install just
-        uses: extractions/setup-just@v1
+        shell: powershell
+        run: |
+          winget install --id Casey.Just --exact
+          winget install --id Xmake-io.Xmake --exact
       - name: build
         shell: msys2 {0}
         run: |
