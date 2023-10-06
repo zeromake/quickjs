@@ -23,6 +23,8 @@ jobs:
         shell: powershell
         run: |
           $env:path+=";$Home\scoop\shims"
+          just init
+          just config
           just test
 
   windows-mingw:
@@ -49,6 +51,8 @@ jobs:
         shell: msys2 {0}
         run: |
           export PATH="$PATH:/c/Users/$USER/scoop/shims"
+          just init
+          just config
           just test
   osx:
     name: macos build
@@ -61,6 +65,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: build
         run: |
+          just init
+          just config
           just test
   linux:
     name: linux build
@@ -77,4 +83,6 @@ jobs:
         uses: extractions/setup-just@v1
       - name: build
         run: |
+          just init
+          just config
           just test
