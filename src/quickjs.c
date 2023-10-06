@@ -77,6 +77,10 @@
 #define CONFIG_PRINTF_RNDN
 #endif
 
+#ifdef CONFIG_USE_GLIB_GCVT
+#include <glib/gcvt.h>
+#endif
+
 /* define to include Atomics.* operations which depend on the OS
    threads */
 #if !defined(EMSCRIPTEN)
@@ -11356,7 +11360,11 @@ static void js_ecvt1(double d, int n_digits, int *decpt, int *sign, char *buf,
     
 #ifdef _WIN32
     int dec = 0;
+#ifdef CONFIG_USE_GLIB_GCVT
+    _gecvt_s(buf, buf1_size, d, n_digits, &dec, sign);
+#else
     _ecvt_s(buf, buf1_size, d, n_digits, &dec, sign);
+#endif
     int offset = 0;
     int target = 0;
     if (*sign) {
@@ -11469,7 +11477,11 @@ static int js_fcvt1(char *buf, int buf_size, double d, int n_digits,
     char buf2[_CVTBUFSIZE] = {0};
     int dec = 0;
     int sign = 0;
+#ifdef CONFIG_USE_GLIB_GCVT
+    _gfcvt_s(buf2, _CVTBUFSIZE, d, n_digits, &dec, &sign);
+#else
     _fcvt_s(buf2, _CVTBUFSIZE, d, n_digits, &dec, &sign);
+#endif
     int offset = 0;
     int target = 0;
     if (sign) {
