@@ -131,6 +131,7 @@ target("quickjs")
         add_files("build/generate/quickjs.def")
     else
         add_cxflags("-fPIC")
+        add_cxflags("-fvisibility=hidden")
         add_files("build/generate/quickjs.map")
     end
     if get_config("bignum") then
@@ -185,10 +186,15 @@ target("tests/bjson")
         "JS_SHARED_LIBRARY=1"
     )
     if is_plat("windows", "mingw") then
-        add_defines("JS_EXPORT=__declspec(dllexport)")
+        -- add_files("src/module.def")
+        add_defines("JS_MODULE_EXPORT=__declspec(dllexport)")
     else
         add_cxflags("-fPIC")
+        add_cxflags("-fvisibility=hidden")
+        -- https://yrom.net/blog/2023/04/19/how-to-explicitly-control-exported-symbols-of-dyamic-shared-libraries/
+        -- add_shflags("-exported_symbols_list src/module.exp", {force = true})
         add_files("src/module.map")
+        add_defines("JS_MODULE_EXPORT=__attribute((visibility(\"default\")))")
     end
     after_build(function (target)
         os.mkdir("$(buildir)/lib/")
