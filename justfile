@@ -18,7 +18,7 @@ init:
 	@{{CUP}}touch {{GENERATE_DIR}}/quickjs.def
 	@{{CUP}}touch {{GENERATE_DIR}}/quickjs.map
 
-#
+# -p mingw --mingw=D:\Scoop\Program\llvm-mingw
 config_release:
 	xmake f -m release -c -y -k static --bignum=y --js-debugger=y
 
@@ -26,7 +26,7 @@ config_debug:
 	xmake f -m debug -c -y -k static --bignum=y --js-debugger=y
 
 config:
-	xmake f -m debug -p mingw --mingw=D:\Scoop\Program\llvm-mingw -c -y -k static --bignum=y --js-debugger=y
+	xmake f -m debug -c -y -k static --bignum=y --js-debugger=y
 
 generate_export:
 	xmake lua ./scripts/export_list.lua
