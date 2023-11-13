@@ -39043,7 +39043,8 @@ static JSValue js_array_includes(JSContext *ctx, JSValueConst this_val,
             }
         }
         JSObject* p = JS_VALUE_GET_OBJ(obj);
-        JS_GetOwnPropertyNamesInternal(ctx, &atoms, &len2, p, JS_GPN_STRING_MASK);
+        if (JS_GetOwnPropertyNamesInternal(ctx, &atoms, &len2, p, JS_GPN_STRING_MASK))
+            goto exception;
         if (len2 > 0 && len2 < len) {
             for (; n < len2; n++) {
                 JSValue k = JS_AtomToValue(ctx, atoms[n].atom);
@@ -39113,7 +39114,8 @@ static JSValue js_array_indexOf(JSContext *ctx, JSValueConst this_val,
             }
         }
         JSObject* p = JS_VALUE_GET_OBJ(obj);
-        JS_GetOwnPropertyNamesInternal(ctx, &atoms, &len2, p, JS_GPN_STRING_MASK);
+        if (JS_GetOwnPropertyNamesInternal(ctx, &atoms, &len2, p, JS_GPN_STRING_MASK))
+            goto exception;
         if (len2 > 0 && len2 < len) {
             for (; n < len2; n++) {
                 JSValue k = JS_AtomToValue(ctx, atoms[n].atom);
@@ -39187,7 +39189,8 @@ static JSValue js_array_lastIndexOf(JSContext *ctx, JSValueConst this_val,
         }
         
         JSObject* p = JS_VALUE_GET_OBJ(obj);
-        JS_GetOwnPropertyNamesInternal(ctx, &atoms, &len2, p, JS_GPN_STRING_MASK);
+        if (JS_GetOwnPropertyNamesInternal(ctx, &atoms, &len2, p, JS_GPN_STRING_MASK))
+            goto exception;
         if (len2 > 0 && len2 < len) {
             for (n = len2 - 1; n >= 0; n--) {
                 JSValue k = JS_AtomToValue(ctx, atoms[n].atom);
