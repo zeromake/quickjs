@@ -34,7 +34,7 @@ jobs:
             mingw-w64-x86_64-make
             git
             p7zip
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: install just
         shell: powershell
         run: |
@@ -58,7 +58,7 @@ jobs:
         run: |
           brew install xmake just
           xmake --version
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: build
         run: |
           just init
@@ -68,7 +68,7 @@ jobs:
     name: linux build
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: install-xmake
         run: |
           ./scripts/xmake-install.sh xmake-amd64.deb
