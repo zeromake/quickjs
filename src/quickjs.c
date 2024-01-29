@@ -7491,7 +7491,7 @@ static int JS_CheckBrand(JSContext *ctx, JSValueConst obj, JSValueConst func)
         return -1;
     }
     p = JS_VALUE_GET_OBJ(obj);
-    prs = find_own_property(&pr, p, js_symbol_to_atom(ctx, (JSValue)brand));
+    prs = find_own_property(&pr, p, js_symbol_to_atom(ctx, brand));
     return (prs != NULL);
 }
 
@@ -56326,7 +56326,7 @@ static JSValue js_debugger_eval(JSContext *ctx, JSValueConst this_obj, JSStackFr
     JSFunctionDef *fd;
 
     js_parse_init(ctx, s, input, input_len, filename);
-    skip_shebang(s, s+input_len);
+    skip_shebang(s->buf_ptr, s->buf_end);
 
     JSObject *p;
     assert(sf != NULL);
