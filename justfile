@@ -76,3 +76,6 @@ test262:
 
 test262o:
 	{{RUN_TEST262}} -m -c tests/test262/test262o.conf
+
+generate_unicode:
+	xmake r unicode_gen unicode-15.0.0 ./src/libunicode-table.h
