@@ -1,3 +1,4 @@
+#! (shebang test)
 import * as std from "std";
 import * as os from "os";
 
@@ -282,6 +283,26 @@ function test_timer()
         os.clearTimeout(th[i]);
 }
 
+/* test closure variable handling when freeing asynchronous
+   function */
+function test_async_gc()
+{
+    (async function run () {
+        let obj = {}
+        
+        let done = () => {
+            obj
+            std.gc();
+        }
+        
+        Promise.resolve().then(done)
+        
+        const p = new Promise(() => {})
+        
+        await p
+    })();
+}
+
 test_printf();
 test_file1();
 test_file2();
@@ -293,3 +314,5 @@ if (os.platform !== 'win32') {
 }
 test_timer();
 test_ext_json();
+test_async_gc();
+

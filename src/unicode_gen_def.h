@@ -105,6 +105,7 @@ DEF(Javanese, "Java")
 DEF(Kaithi, "Kthi")
 DEF(Kannada, "Knda")
 DEF(Katakana, "Kana")
+DEF(Kawi, "Kawi")
 DEF(Kayah_Li, "Kali")
 DEF(Kharoshthi, "Khar")
 DEF(Khmer, "Khmr")
@@ -139,6 +140,7 @@ DEF(Mro, "Mroo")
 DEF(Multani, "Mult")
 DEF(Myanmar, "Mymr")
 DEF(Nabataean, "Nbat")
+DEF(Nag_Mundari, "Nagm")
 DEF(Nandinagari, "Nand")
 DEF(New_Tai_Lue, "Talu")
 DEF(Newa, "Newa")
@@ -204,8 +206,6 @@ DEF(Warang_Citi, "Wara")
 DEF(Yezidi, "Yezi")
 DEF(Yi, "Yiii")
 DEF(Zanabazar_Square, "Zanb")
-DEF(Kawi, "Kawi")
-DEF(Nag_Mundari, "Nag")
 #endif
 
 #ifdef UNICODE_PROP_LIST
@@ -287,8 +287,5 @@ DEF(XID_Start, "XIDS")
 
 /* internal tables with index */
 DEF(Cased1, "")
-DEF(ID_Compat_Math_Start, "")
-DEF(ID_Compat_Math_Continue, "")
-DEF(IDS_Unary_Operator, "IDSU")
 
 #endif

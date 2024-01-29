@@ -208,6 +208,9 @@ static int clock_getmonotonic(struct timespec* ts)
 #define countof(x) (sizeof(x) / sizeof((x)[0]))
 #endif
 
+/* return the pointer of type 'type *' containing 'ptr' as field 'member' */
+#define container_of(ptr, type, member) ((type *)((uint8_t *)(ptr) - offsetof(type, member)))
+
 typedef int BOOL;
 
 #ifndef FALSE

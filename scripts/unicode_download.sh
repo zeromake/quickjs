@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-version="${2:-14.0.0}"
+version="${2:-15.0.0}"
 
 url="https://unicode.org/Public/$version/ucd"
 # url="https://unicode.org/Public/14.0.0/ucd"
