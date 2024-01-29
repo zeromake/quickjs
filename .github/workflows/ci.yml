@@ -14,7 +14,7 @@ jobs:
           Remove-Item .\install.ps1
           scoop update
           scoop install main/xmake main/just main/busybox
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: 
         shell: powershell
         run: |
