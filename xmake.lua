@@ -131,8 +131,15 @@ target("quickjs")
         add_files("build/generate/quickjs.def")
     else
         add_cxflags("-fPIC")
-        add_cxflags("-fvisibility=hidden")
-        add_files("build/generate/quickjs.map")
+        on_config(function(target)
+            local is_clang = not not (target:toolchain("clang") or target:toolchain("clang-cl"))
+            if is_clang then
+                target:add("shflags", "-exported_symbols_list build/generate/quickjs.exp", {force = true})
+            else
+                target:add("cflags", "-fvisibility=hidden")
+                target:add("shflags", "--version-script=build/generate/quickjs.map")
+            end
+        end)
     end
     if get_config("bignum") then
         add_files("src/libbf.c")

@@ -145,9 +145,11 @@ local list = {
 
 local extractMap = path.join(os.scriptdir(), "..", "build", "generate/quickjs.map")
 local extractDef = path.join(os.scriptdir(), "..", "build", "generate/quickjs.def")
+local extractExp = path.join(os.scriptdir(), "..", "build", "generate/quickjs.exp")
 
 local extractMapFile = io.open(extractMap, "wb")
 local extractDefFile = io.open(extractDef, "wb")
+local extractExpFile = io.open(extractExp, "wb")
 
 extractMapFile:write([[{
 global:
@@ -159,9 +161,11 @@ LIBRARY
 for _, fn in ipairs(list) do
     extractMapFile:write(string.format('    %s;\n', fn))
     extractDefFile:write(string.format('        %s\n', fn))
+    extractExpFile:write(string.format('_%s\n', fn))
 end
 extractMapFile:write([[local:
     *;
 };]])
 extractMapFile:close()
 extractDefFile:close()
+extractExpFile:close()
