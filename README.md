@@ -23,6 +23,12 @@ It optionally supports mathematical extensions such as big decimal floating poin
     - [x] [windows support](https://github.com/bellard/quickjs/pull/51), [cross platform](https://github.com/bellard/quickjs/pull/49)
     - [x] [function line pc2line table](https://github.com/bellard/quickjs/pull)
     - [x] [not a function error format var_name](https://github.com/bellard/quickjs/pull/117)
+- [ ] synchronize upstream changes [bellard/quickjs](https://github.com/bellard/quickjs)
+    - [x] self project is init by [2021-03-27 release](https://github.com/bellard/quickjs/commit/b5e62895c619d4ffc75c9d822c8d85f1ece77e5b)
+    - [x] upgrade [export JS_GetModuleNamespace (github issue #34)](https://github.com/bellard/quickjs/commit/c6cc6a9a5e420fa2707e828da23d131d2bf170f7)
+    - [x] upgrade [avoid using INT64_MAX in double comparisons because it cannot be exactly represented as a double (bnoordhuis)](https://github.com/bellard/quickjs/commit/6f480abbc8b2abe91fcc0fa58aa07c367e1dcb36)
+- [ ] synchronize upstream changes [openwebf/quickjs](https://github.com/openwebf/quickjs)
+    - [x] [feat: add ENABLE_MI_MALLOC to on/off mimalloc support](https://github.com/openwebf/quickjs/commit/1f8dbca627728adff68f16155f3e5514a98ff1bd)
 
 ## Todo
 
