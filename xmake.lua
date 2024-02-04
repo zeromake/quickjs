@@ -10,6 +10,11 @@ option("bignum")
     set_showmenu(true)
 option_end()
 
+option("mimalloc")
+    set_default(false)
+    set_showmenu(true)
+option_end()
+
 set_rundir("$(projectdir)")
 add_includedirs("src")
 add_repositories("zeromake https://github.com/zeromake/xrepo.git")
@@ -88,6 +93,10 @@ target("dlfcn-win32")
     end)
 package_end()
 
+if get_config("mimalloc") then
+    add_requires("mimalloc")
+end
+
 if is_plat("windows") then
     add_requires("skeeto-getopt", "simple-stdatomic", "pthread-win32", "dlfcn-win32")
 elseif is_plat("mingw") then
@@ -150,16 +159,26 @@ target("quickjs")
             "src/quickjs-debugger-transport.c"
         )
     end
+    if get_config("mimalloc") then
+        add_packages("mimalloc")
+        add_defines("ENABLE_MI_MALLOC=1")
+    end
 
 target("qjsc")
     use_packages()
     add_files("src/qjsc.c")
     add_deps("quickjs")
+    if is_plat("windows", "mingw") then
+        add_files("src/resource.rc")
+    end
 
 target("qjs")
     use_packages()
     add_files("src/qjs.c", "build/generate/repl.c", "build/generate/qjscalc.c")
     add_deps("qjsc")
+    if is_plat("windows", "mingw") then
+        add_files("src/resource.rc")
+    end
 
 target("unicode_gen")
     use_packages()
@@ -167,6 +186,9 @@ target("unicode_gen")
         "src/unicode_gen.c",
         "src/cutils.c"
     )
+    if is_plat("windows", "mingw") then
+        add_files("src/resource.rc")
+    end
 
 local quickjs_host = {
     windows= "win32",
@@ -200,7 +222,6 @@ target("tests/bjson")
         add_cxflags("-fvisibility=hidden")
         -- https://yrom.net/blog/2023/04/19/how-to-explicitly-control-exported-symbols-of-dyamic-shared-libraries/
         -- add_shflags("-exported_symbols_list src/module.exp", {force = true})
-        add_files("src/module.map")
         add_defines("JS_MODULE_EXPORT=__attribute((visibility(\"default\")))")
     end
     after_build(function (target)

@@ -6,6 +6,7 @@ RUN_TEST262 := 'xmake r run-test262'
 GENERATE_DIR := 'build/generate'
 BUILD_COMMAND := 'xmake b -vD'
 MODE := 'debug'
+CONFIG := '--bignum=y --js-debugger=y --mimalloc=y'
 # [coreutils](https://github.com/uutils/coreutils)
 # [busybox](https://github.com/rmyorston/busybox-w32)
 CUP := if os() == 'windows' {'busybox '} else {''}
@@ -17,16 +18,14 @@ init:
 	@{{CUP}}touch {{GENERATE_DIR}}/tsc.c
 	@{{CUP}}touch {{GENERATE_DIR}}/quickjs.def
 	@{{CUP}}touch {{GENERATE_DIR}}/quickjs.map
+	@{{CUP}}touch {{GENERATE_DIR}}/quickjs.exp
 
 # -p mingw --mingw=D:\Scoop\Program\llvm-mingw
-config_release:
-	xmake f -m release -c -y -k static --bignum=y --js-debugger=y
-
 config_debug:
-	xmake f -m debug -c -y -k static --bignum=y --js-debugger=y
+	xmake f -m debug -c -y -k static -vD {{CONFIG}}
 
 config:
-	xmake f -m debug -c -y -k static --bignum=y --js-debugger=y
+	xmake f -m release -c -y -k static {{CONFIG}}
 
 generate_export:
 	xmake lua ./scripts/export_list.lua

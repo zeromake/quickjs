@@ -130,6 +130,29 @@
 #include <errno.h>
 #endif
 
+#if ENABLE_MI_MALLOC
+    #include <mimalloc.h>
+    #define js_builtin_malloc mi_malloc
+    #define js_builtin_free mi_free
+    #define js_builtin_realloc mi_realloc
+    #define js_builtin_malloc_size mi_usable_size
+#else
+    #define js_builtin_malloc malloc
+    #define js_builtin_free free
+    #define js_builtin_realloc realloc
+#if defined(__APPLE__)
+    #define js_builtin_malloc_size malloc_size
+#elif defined(_WIN32)
+    #define js_builtin_malloc_size _msize
+#elif defined(EMSCRIPTEN)
+    #define js_builtin_malloc_size(ptr) 0
+#elif defined(__linux__)
+    #define js_builtin_malloc_size malloc_usable_size
+#else
+    #define js_builtin_malloc_size malloc_usable_size
+#endif
+#endif
+
 enum {
     /* classid tag        */    /* union usage   | properties */
     JS_CLASS_OBJECT = 1,        /* must be first */
@@ -1731,18 +1754,7 @@ void JS_SetRuntimeOpaque(JSRuntime *rt, void *opaque)
 /* default memory allocation functions with memory limitation */
 static size_t js_def_malloc_usable_size(const void *ptr)
 {
-#if defined(__APPLE__)
-    return malloc_size(ptr);
-#elif defined(_WIN32)
-    return _msize((void *)ptr);
-#elif defined(EMSCRIPTEN)
-    return 0;
-#elif defined(__linux__)
-    return malloc_usable_size((void *)ptr);
-#else
-    /* change this to `return 0;` if compilation fails */
-    return malloc_usable_size((void *)ptr);
-#endif
+    return js_builtin_malloc_size((void *)ptr);
 }
 
 static void *js_def_malloc(JSMallocState *s, size_t size)
@@ -1755,7 +1767,7 @@ static void *js_def_malloc(JSMallocState *s, size_t size)
     if (unlikely(s->malloc_size + size > s->malloc_limit))
         return NULL;
 
-    ptr = malloc(size);
+    ptr = js_builtin_malloc(size);
     if (!ptr)
         return NULL;
 
@@ -1771,7 +1783,7 @@ static void js_def_free(JSMallocState *s, void *ptr)
 
     s->malloc_count--;
     s->malloc_size -= js_def_malloc_usable_size(ptr) + MALLOC_OVERHEAD;
-    free(ptr);
+    js_builtin_free(ptr);
 }
 
 static void *js_def_realloc(JSMallocState *s, void *ptr, size_t size)
@@ -1787,13 +1799,13 @@ static void *js_def_realloc(JSMallocState *s, void *ptr, size_t size)
     if (size == 0) {
         s->malloc_count--;
         s->malloc_size -= old_size + MALLOC_OVERHEAD;
-        free(ptr);
+        js_builtin_free(ptr);
         return NULL;
     }
     if (s->malloc_size + size - old_size > s->malloc_limit)
         return NULL;
 
-    ptr = realloc(ptr, size);
+    ptr = js_builtin_realloc(ptr, size);
     if (!ptr)
         return NULL;
 
