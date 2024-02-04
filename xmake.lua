@@ -141,11 +141,12 @@ target("quickjs")
     else
         add_cxflags("-fPIC")
         on_config(function(target)
-            local is_clang = not not (target:toolchain("clang") or target:toolchain("clang-cl"))
+            local is_clang = not not (target:toolchain("clang") or target:toolchain("clang-cl") or target:toolchain("zig"))
             if is_clang then
                 target:add("shflags", "-exported_symbols_list build/generate/quickjs.exp", {force = true})
             else
                 target:add("cflags", "-fvisibility=hidden")
+                target:add("shlags", "-fvisibility=hidden")
                 target:add("shflags", "--version-script=build/generate/quickjs.map")
             end
         end)
