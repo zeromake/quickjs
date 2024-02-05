@@ -1,5 +1,7 @@
 add_rules("mode.debug", "mode.release")
 
+includes("scripts/toolchain.lua")
+
 option("js-debugger")
     set_default(false)
     set_showmenu(true)
