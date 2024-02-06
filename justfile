@@ -6,7 +6,7 @@ RUN_TEST262 := 'xmake r run-test262'
 GENERATE_DIR := 'build/generate'
 BUILD_COMMAND := 'xmake b -vD'
 MODE := 'debug'
-CONFIG := '--bignum=y --js-debugger=y --mimalloc=y'
+CONFIG := '--bignum=y --js-debugger=n --mimalloc=y'
 # [coreutils](https://github.com/uutils/coreutils)
 # [busybox](https://github.com/rmyorston/busybox-w32)
 CUP := if os() == 'windows' {'busybox '} else {''}
