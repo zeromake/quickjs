@@ -35,13 +35,6 @@
 #if !defined(_MSC_VER)
 #include <sys/time.h>
 #endif
-#if defined(__APPLE__)
-#include <malloc/malloc.h>
-#elif defined(__linux__)
-#include <malloc.h>
-#elif defined(__FreeBSD__)
-#include <malloc_np.h>
-#endif
 
 #include "cutils.h"
 #include "list.h"
@@ -130,28 +123,7 @@
 #include <errno.h>
 #endif
 
-#if ENABLE_MI_MALLOC
-    #include <mimalloc.h>
-    #define js_builtin_malloc mi_malloc
-    #define js_builtin_free mi_free
-    #define js_builtin_realloc mi_realloc
-    #define js_builtin_malloc_size mi_usable_size
-#else
-    #define js_builtin_malloc malloc
-    #define js_builtin_free free
-    #define js_builtin_realloc realloc
-#if defined(__APPLE__)
-    #define js_builtin_malloc_size malloc_size
-#elif defined(_WIN32)
-    #define js_builtin_malloc_size _msize
-#elif defined(EMSCRIPTEN)
-    #define js_builtin_malloc_size(ptr) 0
-#elif defined(__linux__)
-    #define js_builtin_malloc_size malloc_usable_size
-#else
-    #define js_builtin_malloc_size malloc_usable_size
-#endif
-#endif
+#include "js-malloc.h"
 
 enum {
     /* classid tag        */    /* union usage   | properties */
