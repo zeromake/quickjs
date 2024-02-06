@@ -103,7 +103,6 @@ if is_plat("windows") then
     add_requires("skeeto-getopt", "simple-stdatomic", "pthread-win32", "dlfcn-win32")
 elseif is_plat("mingw") then
     add_requires("dlfcn-win32")
-    -- add_requires("glib_gcvt")
 end
 
 local function use_packages()
@@ -111,11 +110,7 @@ local function use_packages()
         add_packages("skeeto-getopt", "simple-stdatomic", "pthread-win32", "dlfcn-win32")
     elseif is_plat("mingw") then
         add_packages("dlfcn-win32")
-        -- add_packages("glib_gcvt")
-        -- add_defines("CONFIG_USE_GLIB_GCVT=1")
     elseif is_plat("android", "iphoneos") then
-    else
-        add_syslinks("m", "dl", "pthread")
     end
     if is_plat("windows", "mingw") and get_config("js-debugger") then
         add_syslinks("ws2_32")
