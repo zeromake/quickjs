@@ -1,6 +1,6 @@
 /*
  * QuickJS Read Eval Print Loop
- * 
+ *
  * Copyright (c) 2017-2020 Fabrice Bellard
  * Copyright (c) 2017-2020 Charlie Gordon
  *
@@ -31,7 +31,7 @@ import * as os from "os";
     /* add 'os' and 'std' bindings */
     g.os = os;
     g.std = std;
-    
+
     /* close global objects */
     var Object = g.Object;
     var String = g.String;
@@ -45,7 +45,7 @@ import * as os from "os";
     var config_numcalc = (typeof os.open === "undefined");
     var has_jscalc = (typeof Fraction === "function");
     var has_bignum = (typeof BigFloat === "function");
-    
+
     var colors = {
         none:    "\x1b[0m",
         black:   "\x1b[30m",
@@ -67,60 +67,38 @@ import * as os from "os";
         bright_white:   "\x1b[37;1m",
     };
 
-    var styles;
-    if (config_numcalc) {
-        styles = {
-            'default':    'black',
-            'comment':    'white',
-            'string':     'green',
-            'regex':      'cyan',
-            'number':     'green',
-            'keyword':    'blue',
-            'function':   'gray',
-            'type':       'bright_magenta',
-            'identifier': 'yellow',
-            'error':      'bright_red',
-            'result':     'black',
-            'error_msg':  'bright_red',
-        };
-    } else {
-        styles = {
-            'default':    'bright_green',
-            'comment':    'white',
-            'string':     'bright_cyan',
-            'regex':      'cyan',
-            'number':     'green',
-            'keyword':    'bright_white',
-            'function':   'bright_yellow',
-            'type':       'bright_magenta',
-            'identifier': 'bright_green',
-            'error':      'red',
-            'result':     'bright_white',
-            'error_msg':  'bright_red',
-        };
-    }
+    var styles = {
+        'default':    'bright_green',
+        'comment':    'white',
+        'string':     'bright_cyan',
+        'regex':      'cyan',
+        'number':     'green',
+        'keyword':    'bright_white',
+        'function':   'bright_yellow',
+        'type':       'bright_magenta',
+        'identifier': 'bright_green',
+        'error':      'red',
+        'result':     'bright_white',
+        'error_msg':  'bright_red',
+    };
 
     var history = [];
     var clip_board = "";
     var prec;
     var expBits;
     var log2_10;
-    
+
     var pstate = "";
     var prompt = "";
     var plen = 0;
-    var ps1;
-    if (config_numcalc)
-        ps1 = "> ";
-    else
-        ps1 = "qjs > ";
+    var ps1 = "qjs > ";
     var ps2 = "  ... ";
     var utf8 = true;
     var show_time = false;
     var show_colors = true;
     var eval_start_time;
     var eval_time = 0;
-    
+
     var mexpr = "";
     var level = 0;
     var cmd = "";
@@ -138,12 +116,12 @@ import * as os from "os";
     var term_read_buf;
     var term_width;
     /* current X position of the cursor in the terminal */
-    var term_cursor_x = 0; 
-    
+    var term_cursor_x = 0;
+
     function termInit() {
         var tab;
         term_fd = std.in.fileno();
-        
+
         /* get the terminal size */
         term_width = 80;
         if (os.isatty(term_fd)) {
@@ -170,14 +148,14 @@ import * as os from "os";
         /* send Ctrl-C to readline */
         handle_byte(3);
     }
-    
+
     function term_read_handler() {
         var l, i;
         l = os.read(term_fd, term_read_buf.buffer, 0, term_read_buf.length);
         for(i = 0; i < l; i++)
             handle_byte(term_read_buf[i]);
     }
-    
+
     function handle_byte(c) {
         if (!utf8) {
             handle_char(c);
@@ -195,12 +173,12 @@ import * as os from "os";
             handle_char(c);
         }
     }
-    
+
     function is_alpha(c) {
         return typeof c === "string" &&
             ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'));
     }
-    
+
     function is_digit(c) {
         return typeof c === "string" && (c >= '0' && c <= '9');
     }
@@ -232,7 +210,7 @@ import * as os from "os";
         d = c.codePointAt(0); /* can be NaN if empty string */
         return d >= 0xdc00 && d < 0xe000;
     }
-    
+
     function is_balanced(a, b) {
         switch (a + b) {
         case "()":
@@ -271,7 +249,7 @@ import * as os from "os";
                 } else {
                     l = Math.min(term_width - 1 - term_cursor_x, delta);
                     print_csi(l, "C"); /* right */
-                    delta -= l; 
+                    delta -= l;
                     term_cursor_x += l;
                 }
             }
@@ -399,7 +377,7 @@ import * as os from "os";
 
     function backward_word() {
         cursor_pos = skip_word_backward(cursor_pos);
-    }        
+    }
 
     function accept_line() {
         std.puts("\n");
@@ -577,7 +555,7 @@ import * as os from "os";
             readline_print_prompt();
         }
     }
-    
+
     function reset() {
         cmd = "";
         cursor_pos = 0;
@@ -613,6 +591,9 @@ import * as os from "os";
                     base = get_context_word(line, pos);
                     if (["true", "false", "null", "this"].includes(base) || !isNaN(+base))
                         return eval(base);
+                    // Check if `base` is a set of regexp flags
+                    if (pos - base.length >= 3 && line[pos - base.length - 1] === '/')
+                        return new RegExp('', base);
                     obj = get_context_object(line, pos - base.length);
                     if (obj === null || obj === void 0)
                         return obj;
@@ -731,7 +712,7 @@ import * as os from "os";
             readline_print_prompt();
         }
     }
-    
+
     var commands = {        /* command table */
         "\x01":     beginning_of_line,      /* ^A - bol */
         "\x02":     backward_char,          /* ^B - backward-char */
@@ -807,9 +788,9 @@ import * as os from "os";
         cursor_pos = cmd.length;
         history_index = history.length;
         readline_cb = cb;
-        
+
         prompt = pstate;
-    
+
         if (mexpr) {
             prompt += dupstr(" ", plen - prompt.length);
             prompt += ps2;
@@ -894,7 +875,7 @@ import * as os from "os";
         } else {
             alert(); /* beep! */
         }
-        
+
         cursor_pos = (cursor_pos < 0) ? 0 :
             (cursor_pos > cmd.length) ? cmd.length : cursor_pos;
         update();
@@ -992,19 +973,21 @@ import * as os from "os";
             s += "n";
         return s;
     }
-    
+
     function print(a) {
         var stack = [];
 
         function print_rec(a) {
             var n, i, keys, key, type, s;
-            
+
             type = typeof(a);
             if (type === "object") {
                 if (a === null) {
                     std.puts(a);
                 } else if (stack.indexOf(a) >= 0) {
                     std.puts("[circular]");
+                } else if (a instanceof Date) {
+                    std.puts("Date " + a.toGMTString().__quote());
                 } else if (has_jscalc && (a instanceof Fraction ||
                                         a instanceof Complex ||
                                         a instanceof Mod ||
@@ -1072,7 +1055,7 @@ import * as os from "os";
         }
         print_rec(a);
     }
-    
+
     function extract_directive(a) {
         var pos;
         if (a[0] !== '\\')
@@ -1087,7 +1070,7 @@ import * as os from "os";
     /* return true if the string after cmd can be evaluted as JS */
     function handle_directive(cmd, expr) {
         var param, prec1, expBits1;
-        
+
         if (cmd === "h" || cmd === "?" || cmd == "help") {
             help();
         } else if (cmd === "load") {
@@ -1179,6 +1162,23 @@ import * as os from "os";
     }
 
     if (config_numcalc) {
+        styles = {
+            'default':    'black',
+            'comment':    'white',
+            'string':     'green',
+            'regex':      'cyan',
+            'number':     'green',
+            'keyword':    'blue',
+            'function':   'gray',
+            'type':       'bright_magenta',
+            'identifier': 'yellow',
+            'error':      'bright_red',
+            'result':     'black',
+            'error_msg':  'bright_red',
+        };
+
+        ps1 = "> ";
+
         /* called by the GUI */
         g.execCmd = function (cmd) {
             switch(cmd) {
@@ -1197,7 +1197,7 @@ import * as os from "os";
             }
         }
     }
-    
+
     function help() {
         function sel(n) {
             return n ? "*": " ";
@@ -1247,7 +1247,7 @@ import * as os from "os";
     function cmd_readline_start() {
         readline_start(dupstr("    ", level), readline_handle_cmd);
     }
-    
+
     function readline_handle_cmd(expr) {
         if (!handle_cmd(expr)) {
             cmd_readline_start();
@@ -1257,7 +1257,7 @@ import * as os from "os";
     /* return true if async termination */
     function handle_cmd(expr) {
         var colorstate, cmd;
-        
+
         if (expr === null) {
             expr = "";
             return false;
@@ -1275,7 +1275,7 @@ import * as os from "os";
         }
         if (expr === "")
             return false;
-        
+
         if (mexpr)
             expr = mexpr + '\n' + expr;
         colorstate = colorize_js(expr);
@@ -1286,7 +1286,7 @@ import * as os from "os";
             return false;
         }
         mexpr = "";
-        
+
         if (has_bignum) {
             /* XXX: async is not supported in this case */
             BigFloatEnv.setPrec(eval_and_print_start.bind(null, expr, false),
@@ -1299,7 +1299,7 @@ import * as os from "os";
 
     function eval_and_print_start(expr, is_async) {
         var result;
-        
+
         try {
             if (eval_mode === "math")
                 expr = '"use math"; void 0;' + expr;
@@ -1342,7 +1342,7 @@ import * as os from "os";
             console.log(error);
         }
         std.puts(colors.none);
-        
+
         handle_cmd_end();
     }
 
@@ -1585,7 +1585,7 @@ import * as os from "os";
     }
 
     termInit();
-    
+
     cmd_start();
 
 })(globalThis);
