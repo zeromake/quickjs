@@ -11405,6 +11405,32 @@ static char *i64toa(char *buf_end, int64_t n, unsigned int base)
 static void js_ecvt1(double d, int n_digits, int *decpt, int *sign, char *buf,
                      int rounding_mode, char *buf1, int buf1_size)
 {
+#ifdef _WIN32
+    int dec = 0;
+    int offset = 0;
+    int target = 0;
+    _ecvt_s(buf, buf1_size, d, n_digits, &dec, sign);
+    if (*sign) {
+        buf1[offset] = '-';
+        offset++;
+    }
+    int l = strlen(buf);
+    buf1[offset] = buf[target];
+    offset++;
+    target++;
+    *decpt = dec;
+    if (l > 1) {
+        buf1[offset] = '.';
+        offset++;
+        int len = l - target;
+        memcpy(buf1+offset, buf+target, len);
+        offset += len;
+        target += len;
+        int n = snprintf(buf1+offset, buf1_size-offset, "e%+d", dec-1);
+        offset += n;
+    }
+    buf1[offset] = '\0';
+#else
     if (rounding_mode != FE_TONEAREST)
         fesetround(rounding_mode);
     snprintf(buf1, buf1_size, "%+.*e", n_digits - 1, d);
@@ -11418,6 +11444,7 @@ static void js_ecvt1(double d, int n_digits, int *decpt, int *sign, char *buf,
     buf[n_digits] = '\0';
     /* exponent */
     *decpt = atoi(buf1 + n_digits + 2 + (n_digits > 1)) + 1;
+#endif
 }
 
 /* maximum buffer size for js_dtoa */
@@ -11489,12 +11516,40 @@ static int js_fcvt1(char (*buf)[JS_DTOA_BUF_SIZE], double d, int n_digits,
                     int rounding_mode)
 {
     int n;
+    int buf_size = sizeof(*buf);
+#ifdef _WIN32
+    char buf2[JS_DTOA_BUF_SIZE] = {0};
+    int dec = 0;
+    int sign = 0;
+    _fcvt_s(buf2, buf_size, d, n_digits, &dec, &sign);
+    int offset = 0;
+    int target = 0;
+    if (sign) {
+        buf[offset] = '-';
+        offset++;
+    }
+    int len = strlen(buf2);
+    memcpy(buf+offset, buf2, dec);
+    offset += dec;
+    target += dec;
+    if (len > dec) {
+        buf[offset] = '.';
+        offset++;
+        int l = len - target;
+        memcpy(buf+offset, buf2+target, l);
+        offset += l;
+        target += l;
+    }
+    buf[offset] = '\0';
+    n = offset;
+#else
     if (rounding_mode != FE_TONEAREST)
         fesetround(rounding_mode);
-    n = snprintf(*buf, sizeof(*buf), "%.*f", n_digits, d);
+    n = snprintf(*buf, buf_size, "%.*f", n_digits, d);
     if (rounding_mode != FE_TONEAREST)
         fesetround(FE_TONEAREST);
-    assert(n < sizeof(*buf));
+#endif
+    assert(n < buf_size);
     return n;
 }
 
