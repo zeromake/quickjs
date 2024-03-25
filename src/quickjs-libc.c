@@ -3636,26 +3636,6 @@ static JSValue js_os_waitpid(JSContext *ctx, JSValueConst this_val,
     return obj;
 }
 
-/* pipe() -> [read_fd, write_fd] or null if error */
-static JSValue js_os_pipe(JSContext *ctx, JSValueConst this_val,
-                          int argc, JSValueConst *argv)
-{
-    int pipe_fds[2], ret;
-    JSValue obj;
-
-    ret = pipe(pipe_fds);
-    if (ret < 0)
-        return JS_NULL;
-    obj = JS_NewArray(ctx);
-    if (JS_IsException(obj))
-        return obj;
-    JS_DefinePropertyValueUint32(ctx, obj, 0, JS_NewInt32(ctx, pipe_fds[0]),
-                                 JS_PROP_C_W_E);
-    JS_DefinePropertyValueUint32(ctx, obj, 1, JS_NewInt32(ctx, pipe_fds[1]),
-                                 JS_PROP_C_W_E);
-    return obj;
-}
-
 #ifdef _WIN32
 static const DWORD NEEDEDACCESS = PROCESS_QUERY_INFORMATION | PROCESS_VM_WRITE | PROCESS_VM_READ | PROCESS_VM_OPERATION | PROCESS_CREATE_THREAD;
 
@@ -3699,32 +3679,6 @@ static JSValue js_os_kill(JSContext *ctx, JSValueConst this_val,
     if (JS_ToInt32(ctx, &sig, argv[1]))
         return JS_EXCEPTION;
     ret = js_get_errno(kill(pid, sig));
-    return JS_NewInt32(ctx, ret);
-}
-
-/* dup(fd) */
-static JSValue js_os_dup(JSContext *ctx, JSValueConst this_val,
-                         int argc, JSValueConst *argv)
-{
-    int fd, ret;
-
-    if (JS_ToInt32(ctx, &fd, argv[0]))
-        return JS_EXCEPTION;
-    ret = js_get_errno(dup(fd));
-    return JS_NewInt32(ctx, ret);
-}
-
-/* dup2(fd) */
-static JSValue js_os_dup2(JSContext *ctx, JSValueConst this_val,
-                         int argc, JSValueConst *argv)
-{
-    int fd, fd2, ret;
-
-    if (JS_ToInt32(ctx, &fd, argv[0]))
-        return JS_EXCEPTION;
-    if (JS_ToInt32(ctx, &fd2, argv[1]))
-        return JS_EXCEPTION;
-    ret = js_get_errno(dup2(fd, fd2));
     return JS_NewInt32(ctx, ret);
 }
 

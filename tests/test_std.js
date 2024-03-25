@@ -148,7 +148,7 @@ function test_os()
 {
     var fd, fpath, fname, fdir, buf, buf2, i, files, err, fdate, st, link_path;
 
-    const stdinIsTTY = os.platform === 'win32' ? true : !os.exec(["/bin/sh", "-c", "test -t 0"], { usePath: false });
+    const stdinIsTTY = os.platform === 'win32' ? false : !os.exec(["/bin/sh", "-c", "test -t 0"], { usePath: false });
 
     assert(os.isatty(0), stdinIsTTY, `isatty(STDIN)`);
 
