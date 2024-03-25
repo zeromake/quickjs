@@ -11525,22 +11525,22 @@ static int js_fcvt1(char (*buf)[JS_DTOA_BUF_SIZE], double d, int n_digits,
     int offset = 0;
     int target = 0;
     if (sign) {
-        buf[offset] = '-';
+        (*buf)[offset] = '-';
         offset++;
     }
     int len = strlen(buf2);
-    memcpy(buf+offset, buf2, dec);
+    memcpy((*buf)+offset, buf2, dec);
     offset += dec;
     target += dec;
     if (len > dec) {
-        buf[offset] = '.';
+        (*buf)[offset] = '.';
         offset++;
         int l = len - target;
-        memcpy(buf+offset, buf2+target, l);
+        memcpy((*buf)+offset, buf2+target, l);
         offset += l;
         target += l;
     }
-    buf[offset] = '\0';
+    (*buf)[offset] = '\0';
     n = offset;
 #else
     if (rounding_mode != FE_TONEAREST)
